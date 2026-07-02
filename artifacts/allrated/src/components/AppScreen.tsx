@@ -431,7 +431,7 @@ function BottomNav({ nav, onNav, accent, accentLight, savedCount }: BottomNavPro
               key={it.key}
               onClick={() => onNav(it.key)}
               aria-label={it.label}
-              className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-white shadow-[0_6px_18px_rgba(184,134,11,0.35)] transition-all hover:scale-110 active:scale-95"
+              className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-white shadow-[0_6px_18px_rgba(176,72,255,0.45)] transition-all hover:scale-110 active:scale-95"
               style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%)` }}
             >
               {it.icon}

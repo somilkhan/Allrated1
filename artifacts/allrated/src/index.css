@@ -10,8 +10,8 @@
   body {
     @apply font-body antialiased;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184, 134, 11, 0.08), transparent),
-      linear-gradient(160deg, #0d0709 0%, #150a10 100%);
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(176, 72, 255, 0.10), transparent),
+      linear-gradient(160deg, #080808 0%, #0f0516 100%);
     background-attachment: fixed;
     color: #f4f1ec;
     letter-spacing: -0.01px;

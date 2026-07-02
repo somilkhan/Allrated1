@@ -41,9 +41,9 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-gradient-to-br from-ink-900 to-[#0f0408] animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#080808] to-[#0f0516] animate-fade-in">
       <div className="w-full max-w-[420px] px-5 py-8">
-        <div className="rounded-3xl border border-white/[0.09] bg-ink-600/60 p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+        <div className="rounded-3xl border border-[#B048FF]/20 bg-[#0f0516]/80 p-10 shadow-[0_20px_60px_rgba(176,72,255,0.15)] backdrop-blur-xl">
           <div className="mb-8 text-center">
             <span className="mb-4 inline-block animate-bounce-slow text-5xl">⭐</span>
             <h1 className="font-display text-3xl font-black tracking-tight">AllRated</h1>
@@ -58,7 +58,7 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
                 onClick={() => setTab(t)}
                 className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13px] font-bold transition-all ${
                   tab === t
-                    ? 'bg-white/10 text-white'
+                    ? 'bg-[#B048FF]/20 text-[#B048FF]'
                     : 'text-white/55 hover:text-white/80'
                 }`}
               >
@@ -96,7 +96,7 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
             <button
               type="submit"
               disabled={busy}
-              className="mt-2 rounded-xl bg-gradient-to-br from-white to-[#e8e8e8] py-3.5 text-sm font-bold text-black transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 rounded-full bg-[#B048FF] py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-[#8F44F0] hover:shadow-[0_10px_30px_rgba(176,72,255,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy
                 ? 'Please wait…'
@@ -130,7 +130,7 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
           <button
             type="button"
             onClick={onSkip}
-            className="mt-5 w-full text-center text-[13px] text-white/40 underline underline-offset-2 hover:text-white/70 transition-colors"
+            className="mt-5 w-full text-center text-[13px] text-[#B048FF]/70 underline underline-offset-2 hover:text-[#B048FF] transition-colors"
           >
             Browse without signing in →
           </button>

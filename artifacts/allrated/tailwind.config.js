@@ -15,6 +15,12 @@ export default {
           DEFAULT: '#B8860B',
           light: '#D4AF37',
         },
+        purple: {
+          DEFAULT: '#B048FF',
+          hover: '#8F44F0',
+          dark: '#6B2FCC',
+          glow: 'rgba(176,72,255,0.18)',
+        },
       },
       fontFamily: {
         display: ['Inter', 'system-ui', 'sans-serif'],
