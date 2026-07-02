@@ -19,7 +19,7 @@ import {
   type TierKey,
   type TierVoteCounts,
 } from '../api/userData';
-import { fetchTmdbCredits, type CrewMember } from '../api/tmdb';
+import { fetchTmdbCredits, type CrewMember, type CastMember } from '../api/tmdb';
 import { getMockReviews } from '../data/mockReviews';
 import { decodeId } from '../api/ids';
 
@@ -156,66 +156,114 @@ function CrewSection({ crew }: { crew: CrewMember[] }) {
   );
 }
 
-function TierMeter({ counts }: { counts: TierVoteCounts | null }) {
-  const hasVotes = counts && counts.total > 0;
+function TierGauge({ counts }: { counts: TierVoteCounts | null }) {
+  const hasVotes = counts != null && counts.total > 0;
+
+  // Weighted score 0-100: perfection=100, goforit=70, timepass=35, skip=0
+  const score = hasVotes
+    ? Math.round(
+        (counts.perfection * 100 + counts.goforit * 70 + counts.timepass * 35) /
+          counts.total,
+      )
+    : 0;
+
+  // SVG gauge — 270° arc, gap at bottom
+  const R = 50, CX = 64, CY = 68;
+  const circ = 2 * Math.PI * R;
+  const arcLen = circ * 0.75;           // 270° of full circle
+  const fillLen = hasVotes ? arcLen * (score / 100) : 0;
+  const scoreColor =
+    score >= 75 ? '#8b5cf6' : score >= 50 ? '#10b981' : score >= 25 ? '#f59e0b' : '#f43f5e';
 
   return (
     <div className="mb-5">
-      <div className="mb-2.5 flex items-center justify-between">
-        <h3 className="text-sm font-bold">Rating Meter</h3>
-        {hasVotes && (
-          <span className="text-[11px] text-white/40">
-            {counts.total} {counts.total === 1 ? 'vote' : 'votes'}
-          </span>
-        )}
-      </div>
+      <h3 className="mb-3 text-sm font-bold">Rating Meter</h3>
+      <div className="flex items-center gap-5">
+        {/* Circular gauge */}
+        <div className="relative shrink-0" style={{ width: 120, height: 110 }}>
+          <svg
+            viewBox="0 0 128 118"
+            width="120"
+            height="110"
+            style={{ transform: 'rotate(-225deg)', overflow: 'visible' }}
+          >
+            <circle cx={CX} cy={CY} r={R} fill="none"
+              stroke="rgba(255,255,255,0.08)" strokeWidth="10"
+              strokeDasharray={`${arcLen} ${circ - arcLen}`}
+              strokeLinecap="round" />
+            <circle cx={CX} cy={CY} r={R} fill="none"
+              stroke={scoreColor} strokeWidth="10"
+              strokeDasharray={`${fillLen} ${circ - fillLen}`}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dasharray 0.7s ease, stroke 0.5s ease' }} />
+          </svg>
+          {/* Centre label — counter-rotated so text reads upright */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[22px] font-extrabold leading-none">
+              {hasVotes ? `${score}%` : '—'}
+            </span>
+            {hasVotes && (
+              <span className="text-[9px] text-white/40 mt-0.5">{counts.total} votes</span>
+            )}
+          </div>
+        </div>
 
-      {/* Gradient bar */}
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.07]">
-        {hasVotes
-          ? TIERS.map(({ key, bar }) => {
-              const pct = (counts[key] / counts.total) * 100;
-              return pct > 0 ? (
-                <div
-                  key={key}
-                  className={`${bar} transition-all duration-500`}
-                  style={{ width: `${pct}%` }}
-                  title={`${tierConfig(key).label}: ${counts[key]} votes`}
-                />
-              ) : null;
-            })
-          : null}
-      </div>
-
-      {/* Tier legend */}
-      <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-        {TIERS.map(({ key, bar, label }) => {
-          const count = counts?.[key] ?? 0;
-          const pct = hasVotes ? Math.round((count / counts!.total) * 100) : 0;
-          return (
-            <div key={key} className="flex items-center gap-1.5">
-              <div className={`h-2 w-2 shrink-0 rounded-full ${bar}`} />
-              <span className="text-[10px] text-white/55 truncate">
-                {label}
+        {/* Tier breakdown */}
+        <div className="flex-1 space-y-2">
+          {TIERS.map(({ key, bar, label }) => {
+            const count = counts?.[key] ?? 0;
+            const pct = hasVotes ? Math.round((count / counts!.total) * 100) : 0;
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <div className={`h-2 w-2 shrink-0 rounded-full ${bar}`} />
+                <span className="flex-1 text-[11px] text-white/60">{label}</span>
                 {hasVotes && (
-                  <span className="ml-1 text-white/35">{pct}%</span>
+                  <span className="text-[11px] font-semibold text-white/50">{pct}%</span>
                 )}
-              </span>
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+          {!hasVotes && (
+            <p className="text-[11px] text-white/30">
+              {counts ? 'No votes yet — be first!' : 'Connect Supabase to see votes.'}
+            </p>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
 
-      {!counts && (
-        <p className="mt-1.5 text-[11px] text-white/30">
-          Connect Supabase to see community votes.
-        </p>
-      )}
-      {counts && !hasVotes && (
-        <p className="mt-1.5 text-[11px] text-white/30">
-          No votes yet. Be the first to rate this!
-        </p>
-      )}
+function CastSection({ cast }: { cast: CastMember[] }) {
+  if (cast.length === 0) return null;
+  return (
+    <div className="mb-5">
+      <h3 className="mb-2.5 text-sm font-bold">Cast</h3>
+      <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+        {cast.map((member) => (
+          <div key={member.id} className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+            {member.profileUrl ? (
+              <img
+                src={member.profileUrl}
+                alt={member.name}
+                className="h-14 w-14 rounded-full object-cover border border-white/10"
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.07] text-[11px] font-bold text-white/60">
+                {getInitials(member.name)}
+              </div>
+            )}
+            <div className="w-full text-center">
+              <div className="truncate text-[10px] font-semibold leading-tight text-white/80">
+                {member.name}
+              </div>
+              <div className="truncate text-[9px] leading-tight text-white/40">
+                {member.character}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -334,6 +382,7 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
 
   const [reviews, setReviews] = useState<Rating[]>([]);
   const [tierVotes, setTierVotes] = useState<TierVoteCounts | null>(null);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [score, setScore] = useState(5);
@@ -368,14 +417,12 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
     }
   }, [configured, item.id, user?.id]);
 
-  // Load crew (TMDB only)
+  // Load cast + crew (TMDB only)
   useEffect(() => {
     if (mediaType === 'movie' || mediaType === 'tv') {
       fetchTmdbCredits(mediaType, externalId)
-        .then(setCrew)
-        .catch(() => {
-          // silently ignore — crew is supplementary
-        });
+        .then(({ cast: c, crew: cr }) => { setCast(c); setCrew(cr); })
+        .catch(() => undefined);
     }
   }, [mediaType, externalId]);
 
@@ -518,7 +565,8 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
           ))}
         </div>
 
-        {/* ── Feature 1: Crew section ── */}
+        {/* Cast + Crew */}
+        <CastSection cast={cast} />
         <CrewSection crew={crew} />
 
         {/* About */}
@@ -529,8 +577,8 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
           </p>
         </div>
 
-        {/* ── Feature 2: Rating Meter (4-tier voting) ── */}
-        <TierMeter counts={configured ? tierVotes : null} />
+        {/* Rating Meter — circular gauge */}
+        <TierGauge counts={configured ? tierVotes : null} />
 
         {/* Reviews */}
         <div className="mb-5">

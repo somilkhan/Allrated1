@@ -169,28 +169,53 @@ export interface CrewMember {
   job: string;
 }
 
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profileUrl: string | null;
+}
+
 const CREW_JOBS = ['Director', 'Writer', 'Screenplay', 'Story'];
+
+interface CreditsResponse {
+  cast: { id: number; name: string; character: string; profile_path: string | null; order: number }[];
+  crew: { id: number; name: string; job: string }[];
+}
 
 export async function fetchTmdbCredits(
   mediaType: TmdbMediaType,
   externalId: number,
-): Promise<CrewMember[]> {
-  const data = await tmdbFetch<{ crew: { id: number; name: string; job: string }[] }>(
+): Promise<{ cast: CastMember[]; crew: CrewMember[] }> {
+  const data = await tmdbFetch<CreditsResponse>(
     `/${mediaType}/${externalId}/credits`,
     { language: 'en-US' },
   );
+
+  // Cast — top 8 by order
+  const cast: CastMember[] = data.cast
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 8)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      character: c.character,
+      profileUrl: c.profile_path ? `${IMG_BASE}/w185${c.profile_path}` : null,
+    }));
+
+  // Crew — Director / Writer, deduped by person
   const personMap = new Map<number, { name: string; jobs: string[] }>();
   for (const c of data.crew) {
     if (CREW_JOBS.includes(c.job)) {
-      if (!personMap.has(c.id)) {
-        personMap.set(c.id, { name: c.name, jobs: [] });
-      }
+      if (!personMap.has(c.id)) personMap.set(c.id, { name: c.name, jobs: [] });
       personMap.get(c.id)!.jobs.push(c.job);
     }
   }
-  return Array.from(personMap.entries()).map(([id, { name, jobs }]) => ({
+  const crew: CrewMember[] = Array.from(personMap.entries()).map(([id, { name, jobs }]) => ({
     id,
     name,
     job: jobs[0],
   }));
+
+  return { cast, crew };
 }
