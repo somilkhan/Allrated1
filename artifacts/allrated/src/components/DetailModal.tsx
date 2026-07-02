@@ -583,7 +583,7 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
                   time={new Date(r.createdAt).toLocaleDateString()}
                   score={r.score}
                   text={r.review}
-                  tier={r.tier}
+                  tier={tierVotes?.userTiers[r.userId] ?? r.tier ?? null}
                 />
               ))
             )}

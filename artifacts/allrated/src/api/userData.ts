@@ -10,6 +10,8 @@ export interface TierVoteCounts {
   perfection: number;
   total: number;
   myTier: TierKey | null;
+  /** userId → tier, for showing badges on individual reviews */
+  userTiers: Record<string, TierKey>;
 }
 
 export type ListName = 'watchlist' | 'favorites';
@@ -176,11 +178,12 @@ export async function fetchTierVotes(
     .select('user_id, tier')
     .eq('item_id', itemId);
   if (error) throw error;
-  const counts: TierVoteCounts = { skip: 0, timepass: 0, goforit: 0, perfection: 0, total: 0, myTier: null };
+  const counts: TierVoteCounts = { skip: 0, timepass: 0, goforit: 0, perfection: 0, total: 0, myTier: null, userTiers: {} };
   for (const row of data as TierVoteRow[]) {
     const t = row.tier as TierKey;
     if (t in counts) counts[t]++;
     counts.total++;
+    counts.userTiers[row.user_id] = t;
     if (userId && row.user_id === userId) counts.myTier = t;
   }
   return counts;
@@ -208,7 +211,9 @@ export async function upsertRating(params: {
   review: string;
   tier?: TierKey | null;
 }): Promise<void> {
-  const { userId, author, item, score, review, tier } = params;
+  const { userId, author, item, score, review } = params;
+  // tier is stored in tier_votes table — not included here to avoid
+  // a dependency on the optional ratings.tier column migration.
   const { error } = await requireSupabase().from('ratings').upsert(
     {
       user_id: userId,
@@ -218,7 +223,6 @@ export async function upsertRating(params: {
       item,
       score,
       review,
-      tier: tier ?? null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id,item_id' },
