@@ -43,14 +43,14 @@ export function DetailModal({ id, accent, onClose, onToast }: DetailModalProps) 
   }, [id]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end overflow-y-auto lg:items-center lg:justify-center">
+    <div className="fixed inset-0 z-[200] flex items-end lg:items-center lg:justify-center">
       <div
         className="absolute inset-0 cursor-pointer bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         ref={scrollRef}
-        className="relative w-full max-w-[500px] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-white/[0.09] bg-ink-900 thin-scrollbar lg:max-h-[88vh] lg:rounded-[28px] lg:border"
+        className="relative w-full max-w-[500px] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-white/[0.09] bg-ink-900 thin-scrollbar max-h-[92vh] lg:max-h-[88vh] lg:rounded-[28px] lg:border"
       >
         <button
           onClick={onClose}
