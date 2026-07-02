@@ -8,7 +8,7 @@ interface CategoryScreenProps {
 export function CategoryScreen({ onPick }: CategoryScreenProps) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-ink-900 to-ink-700 px-5 py-8 animate-fade-in">
-      <div className="w-full max-w-[640px] text-center">
+      <div className="w-full max-w-[500px] text-center">
         <div className="mb-8">
           <h1 className="font-display text-[34px] font-black leading-tight tracking-tight bg-gradient-to-br from-white to-[#aaa] bg-clip-text text-transparent">
             Pick your lane
@@ -16,7 +16,7 @@ export function CategoryScreen({ onPick }: CategoryScreenProps) {
           <p className="mt-2 text-sm text-white/55">Choose a category to start rating</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4">
           {categoryOrder.map((key, i) => {
             const cat = categoryData[key];
             return (
