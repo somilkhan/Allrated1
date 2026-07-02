@@ -1,36 +1,37 @@
-# [Project name]
+# AllRated
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A social rating app where users rate movies, TV shows, games, anime, and more — with tier-based verdicts, reviews, watchlists, and community scores.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Workflow: `artifacts/allrated: web` — starts the Vite dev server on port 19115
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: Vite + React + Tailwind CSS (artifacts/allrated)
+- Auth + data: Supabase (auth, watchlist, ratings, tier votes)
+- External APIs: TMDB (movies/TV), AniList (anime)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/allrated/src/App.tsx` — root component, screen routing logic
+- `artifacts/allrated/src/components/` — UI screens (Auth, Category, App, Detail, Saved)
+- `artifacts/allrated/src/api/` — TMDB, AniList, Supabase data access
+- `artifacts/allrated/src/context/UserDataProvider.tsx` — auth + list state
+- `artifacts/allrated/src/data/catalog.ts` — category/media type definitions
+- `artifacts/allrated/src/lib/env.ts` — env var access + feature flags
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- App uses client-side state machine for screen routing (no URL router) via `useAppHistory`
+- Supabase is optional: app degrades gracefully when env vars are absent (auth/lists disabled)
+- TMDB key is also optional: search/discovery disabled without it, but local catalog still works
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Rate movies, TV, anime, games, and more. Users sign in, pick a category, search for titles, leave star ratings and reviews, assign tier verdicts (skip / timepass / go for it / perfection), and save items to a watchlist or favorites.
 
 ## User preferences
 
@@ -38,7 +39,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `artifact.toml` must live at `artifacts/allrated/.replit-artifact/artifact.toml` (not at root of artifact dir)
+- Required env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TMDB_API_KEY`
+- Do NOT run `pnpm dev` at workspace root — use the workflow or `pnpm --filter @workspace/allrated run dev`
 
 ## Pointers
 
