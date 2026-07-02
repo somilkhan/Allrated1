@@ -17,14 +17,23 @@ export function Card({ item, accent, minWidth, onClick }: CardProps) {
       className="group overflow-hidden rounded-[14px] border border-white/[0.09] bg-ink-600/60 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.3)]"
     >
       <div className="relative aspect-[2/3] w-full">
-        <div
-          className="absolute inset-0 flex items-center justify-center text-4xl"
-          style={{
-            background: `radial-gradient(circle at 30% 20%, ${accent}40, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)`,
-          }}
-        >
-          {item.emoji}
-        </div>
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className="absolute inset-0 flex items-center justify-center text-4xl"
+            style={{
+              background: `radial-gradient(circle at 30% 20%, ${accent}40, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)`,
+            }}
+          >
+            {item.emoji}
+          </div>
+        )}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 to-transparent" />
         <span
           className={`absolute right-2 top-2 rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide backdrop-blur-md ${verdictStyles[verdict.key]}`}
@@ -52,18 +61,30 @@ interface FeaturedCardProps {
 
 export function FeaturedCard({ item, accent, onClick }: FeaturedCardProps) {
   const verdict = getVerdict(item.rating);
+  const hero = item.backdrop ?? item.image;
   return (
     <button
       onClick={onClick}
       className="group w-full overflow-hidden rounded-[20px] border border-white/[0.09] bg-ink-600/60 text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:grid lg:grid-cols-[1.1fr_1fr] lg:items-stretch"
     >
-      <div
-        className="flex aspect-video items-center justify-center text-6xl lg:aspect-auto lg:h-full"
-        style={{
-          background: `radial-gradient(circle at 25% 30%, ${accent}50, transparent 55%), linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)`,
-        }}
-      >
-        {item.emoji}
+      <div className="relative aspect-video overflow-hidden lg:aspect-auto lg:h-full">
+        {hero ? (
+          <img
+            src={hero}
+            alt={item.name}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center text-6xl"
+            style={{
+              background: `radial-gradient(circle at 25% 30%, ${accent}50, transparent 55%), linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)`,
+            }}
+          >
+            {item.emoji}
+          </div>
+        )}
       </div>
       <div className="p-4">
         <div className="mb-1.5 text-base font-bold">{item.name}</div>

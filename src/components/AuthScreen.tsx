@@ -1,21 +1,42 @@
 import { useState } from 'react';
 import { Mail, Lock, User, Star, Sparkles } from 'lucide-react';
+import { useUserData } from '../context/userDataContext';
 
 interface AuthScreenProps {
-  onAuthed: (name: string) => void;
+  onToast: (msg: string) => void;
 }
 
 type Tab = 'login' | 'signup';
 
-export function AuthScreen({ onAuthed }: AuthScreenProps) {
+export function AuthScreen({ onToast }: AuthScreenProps) {
+  const { configured, signIn, signUp } = useUserData();
   const [tab, setTab] = useState<Tab>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAuthed(tab === 'signup' && name.trim() ? name.trim() : 'User');
+    if (busy) return;
+    if (!configured) {
+      onToast('Auth is not configured. Add Supabase keys to .env');
+      return;
+    }
+    setBusy(true);
+    try {
+      if (tab === 'signup') {
+        await signUp(email.trim(), password, name.trim());
+        onToast('Account created — check your email to confirm, then sign in');
+        setTab('login');
+      } else {
+        await signIn(email.trim(), password);
+      }
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -32,6 +53,7 @@ export function AuthScreen({ onAuthed }: AuthScreenProps) {
             {(['login', 'signup'] as Tab[]).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setTab(t)}
                 className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13px] font-bold transition-all ${
                   tab === t
@@ -72,9 +94,14 @@ export function AuthScreen({ onAuthed }: AuthScreenProps) {
 
             <button
               type="submit"
-              className="mt-2 rounded-xl bg-gradient-to-br from-white to-[#e8e8e8] py-3.5 text-sm font-bold text-black transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
+              disabled={busy}
+              className="mt-2 rounded-xl bg-gradient-to-br from-white to-[#e8e8e8] py-3.5 text-sm font-bold text-black transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {tab === 'login' ? 'Sign in' : 'Create account'}
+              {busy
+                ? 'Please wait…'
+                : tab === 'login'
+                  ? 'Sign in'
+                  : 'Create account'}
             </button>
           </form>
 
@@ -83,10 +110,18 @@ export function AuthScreen({ onAuthed }: AuthScreenProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => onToast('Social sign-in coming soon')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]"
+            >
               <Star className="h-4 w-4" /> Google
             </button>
-            <button className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => onToast('Social sign-in coming soon')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]"
+            >
               <Star className="h-4 w-4" /> Apple
             </button>
           </div>

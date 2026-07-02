@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { CategoryScreen } from './components/CategoryScreen';
 import { AppScreen } from './components/AppScreen';
@@ -7,20 +7,24 @@ import { SavedPanel } from './components/SavedPanel';
 import { Toast } from './components/Toast';
 import { useAppHistory } from './hooks/useAppHistory';
 import { useToast } from './hooks/useToast';
-import { useSaved } from './hooks/useSaved';
+import { useUserData } from './context/userDataContext';
 import { categoryData } from './data/catalog';
 import type { CategoryKey, Item } from './data/catalog';
+import { decodeId } from './api/ids';
 
 function App() {
   const { state, navigate, back } = useAppHistory();
   const { message, show } = useToast();
-  const { saved, toggle, isSaved, count } = useSaved();
+  const { authReady, user, watchlist } = useUserData();
 
-  const user = useMemo(() => 'User', []);
-
-  const handleAuthed = useCallback(() => {
-    navigate({ screen: 'category' });
-  }, [navigate]);
+  useEffect(() => {
+    if (!authReady) return;
+    if (user && state.screen === 'auth') {
+      navigate({ screen: 'category' });
+    } else if (!user && state.screen !== 'auth') {
+      navigate({ screen: 'auth' });
+    }
+  }, [authReady, user, state.screen, navigate]);
 
   const handlePickCategory = useCallback(
     (cat: CategoryKey) => {
@@ -56,40 +60,20 @@ function App() {
     back();
   }, [back]);
 
-  const toggleSave = useCallback(
-    (id: number) => {
-      const wasSaved = isSaved(id);
-      toggle(id);
-      show(wasSaved ? 'Removed from saved' : 'Saved to your list');
-    },
-    [isSaved, toggle, show],
-  );
-
-  const activeItem: Item | null = useMemo(() => {
-    if (state.screen === 'app' && state.category && state.modal != null) {
-      return (
-        categoryData[state.category].items.find((i) => i.id === state.modal) ?? null
-      );
-    }
-    return null;
-  }, [state]);
-
-  const savedItems: Item[] = useMemo(() => {
-    if (!state.category) return [];
-    return categoryData[state.category].items.filter((i) => saved.includes(i.id));
-  }, [saved, state.category]);
+  const modalAccent =
+    state.modal != null
+      ? categoryData[decodeId(state.modal).mediaType].accent
+      : categoryData.movie.accent;
 
   return (
     <>
-      {state.screen === 'auth' && <AuthScreen onAuthed={handleAuthed} />}
+      {state.screen === 'auth' && <AuthScreen onToast={show} />}
 
       {state.screen === 'category' && <CategoryScreen onPick={handlePickCategory} />}
 
       {state.screen === 'app' && state.category && (
         <AppScreen
           cat={state.category}
-          user={user}
-          savedCount={count}
           onBackToCategories={handleBackToCategories}
           onOpenItem={openItem}
           onOpenSaved={openSaved}
@@ -97,21 +81,18 @@ function App() {
         />
       )}
 
-      {activeItem && state.category && (
+      {state.screen === 'app' && state.category && state.modal != null && (
         <DetailModal
-          item={activeItem}
-          cat={state.category}
-          accent={categoryData[state.category].accent}
-          saved={isSaved(activeItem.id)}
+          id={state.modal}
+          accent={modalAccent}
           onClose={closeModal}
-          onToggleSave={() => toggleSave(activeItem.id)}
-          onReview={() => show('Review composer coming soon')}
+          onToast={show}
         />
       )}
 
       {state.screen === 'app' && state.category && state.panel === 'saved' && (
         <SavedPanel
-          items={savedItems}
+          items={watchlist}
           onClose={closeSavedPanel}
           onOpenItem={openItem}
         />
