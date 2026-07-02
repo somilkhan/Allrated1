@@ -4,11 +4,12 @@ import { useUserData } from '../context/userDataContext';
 
 interface AuthScreenProps {
   onToast: (msg: string) => void;
+  onSkip: () => void;
 }
 
 type Tab = 'login' | 'signup';
 
-export function AuthScreen({ onToast }: AuthScreenProps) {
+export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
   const { configured, signIn, signUp } = useUserData();
   const [tab, setTab] = useState<Tab>('login');
   const [name, setName] = useState('');
@@ -125,6 +126,14 @@ export function AuthScreen({ onToast }: AuthScreenProps) {
               <Star className="h-4 w-4" /> Apple
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={onSkip}
+            className="mt-5 w-full text-center text-[13px] text-white/40 underline underline-offset-2 hover:text-white/70 transition-colors"
+          >
+            Browse without signing in →
+          </button>
         </div>
       </div>
     </div>

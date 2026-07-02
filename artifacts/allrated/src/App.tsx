@@ -19,11 +19,13 @@ function App() {
 
   useEffect(() => {
     if (!authReady) return;
+    // When user signs in from auth screen → go to category
     if (user && state.screen === 'auth') {
       navigate({ screen: 'category' });
-    } else if (!user && state.screen !== 'auth') {
-      navigate({ screen: 'auth' });
     }
+    // Do NOT force unauthenticated users back to auth —
+    // browsing is allowed without an account; individual
+    // actions (save, review, favorite) show their own sign-in prompts.
   }, [authReady, user, state.screen, navigate]);
 
   const handlePickCategory = useCallback(
@@ -67,7 +69,9 @@ function App() {
 
   return (
     <>
-      {state.screen === 'auth' && <AuthScreen onToast={show} />}
+      {state.screen === 'auth' && (
+        <AuthScreen onToast={show} onSkip={() => navigate({ screen: 'category' })} />
+      )}
 
       {state.screen === 'category' && <CategoryScreen onPick={handlePickCategory} />}
 
