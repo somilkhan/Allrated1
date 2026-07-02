@@ -162,3 +162,35 @@ export async function getTmdbDetails(
   });
   return mapTmdb(raw, mediaType);
 }
+
+export interface CrewMember {
+  id: number;
+  name: string;
+  job: string;
+}
+
+const CREW_JOBS = ['Director', 'Writer', 'Screenplay', 'Story'];
+
+export async function fetchTmdbCredits(
+  mediaType: TmdbMediaType,
+  externalId: number,
+): Promise<CrewMember[]> {
+  const data = await tmdbFetch<{ crew: { id: number; name: string; job: string }[] }>(
+    `/${mediaType}/${externalId}/credits`,
+    { language: 'en-US' },
+  );
+  const personMap = new Map<number, { name: string; jobs: string[] }>();
+  for (const c of data.crew) {
+    if (CREW_JOBS.includes(c.job)) {
+      if (!personMap.has(c.id)) {
+        personMap.set(c.id, { name: c.name, jobs: [] });
+      }
+      personMap.get(c.id)!.jobs.push(c.job);
+    }
+  }
+  return Array.from(personMap.entries()).map(([id, { name, jobs }]) => ({
+    id,
+    name,
+    job: jobs[0],
+  }));
+}
