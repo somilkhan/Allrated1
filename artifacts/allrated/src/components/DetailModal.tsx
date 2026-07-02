@@ -443,11 +443,10 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
     }
     setSubmitting(true);
     try {
-      // Save tier vote + review in parallel
-      await Promise.all([
-        upsertTierVote(user.id, item.id, selectedTier),
-        upsertRating({ userId: user.id, author: displayName, item, score, review: text.trim(), tier: selectedTier }),
-      ]);
+      // Save the review — this is the critical write
+      await upsertRating({ userId: user.id, author: displayName, item, score, review: text.trim(), tier: selectedTier });
+      // Save tier vote — best-effort, don't let a failure block the review
+      upsertTierVote(user.id, item.id, selectedTier).catch(() => undefined);
       onToast('Review saved');
       setShowForm(false);
       await Promise.all([loadReviews(), loadTierVotes()]);
