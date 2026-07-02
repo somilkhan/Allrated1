@@ -39,14 +39,14 @@ export function DetailModal({ id, accent, onClose, onToast }: DetailModalProps) 
   }, [id]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end overflow-y-auto lg:items-center lg:justify-center">
+    <div className="fixed inset-0 z-[200] flex flex-col items-stretch justify-end overflow-hidden lg:items-center lg:justify-center">
       <div
         className="absolute inset-0 cursor-pointer bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         ref={scrollRef}
-        className="relative w-full max-w-[520px] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-white/[0.08] bg-[#0d0709] thin-scrollbar lg:max-h-[92vh] lg:rounded-[24px] lg:border"
+        className="relative mx-auto w-full max-w-[520px] max-h-[90vh] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-white/[0.08] bg-[#0d0709] thin-scrollbar lg:max-h-[92vh] lg:rounded-[24px] lg:border"
       >
         <button
           onClick={onClose}
@@ -525,8 +525,13 @@ function DetailBody({ data, accent, onToast }: { data: NonNullable<DetailBodyDat
         <TrailerModal trailerKey={trailerKey} onClose={() => setShowTrailer(false)} />
       )}
 
+      {/* ── Drag handle (mobile) ── */}
+      <div className="flex justify-center pt-3 pb-1 lg:hidden">
+        <div className="h-1 w-10 rounded-full bg-white/20" />
+      </div>
+
       {/* ── Hero ── */}
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9', maxHeight: 240 }}>
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9', maxHeight: 200 }}>
         {heroImage ? (
           <img src={heroImage} alt={item.name} className="h-full w-full object-cover" />
         ) : (

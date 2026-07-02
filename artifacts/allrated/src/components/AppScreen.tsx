@@ -322,12 +322,12 @@ interface HeroProps {
 function Hero({ accent, query, onQuery }: HeroProps) {
   return (
     <div
-      className="mx-auto w-full max-w-[1100px] px-4 pb-5 pt-7 lg:px-8 lg:pt-10"
+      className="mx-auto w-full max-w-[1100px] px-4 pb-4 pt-5 lg:px-8 lg:pt-10 lg:pb-5"
       style={{
         background: `radial-gradient(ellipse 70% 55% at 25% 0%, ${accent}40, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 10%, ${accent}30, transparent 70%)`,
       }}
     >
-      <h1 className="mb-4 font-display text-[30px] font-black tracking-tight lg:text-[42px]">
+      <h1 className="mb-3 font-display text-[22px] font-black tracking-tight lg:mb-4 lg:text-[42px]">
         Rate. Review. Discover.
       </h1>
       <div className="relative flex items-center">
