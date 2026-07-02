@@ -82,7 +82,7 @@ export function AppScreen({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto pb-[100px] animate-fade-in lg:pb-[140px]">
+    <div className="fixed inset-0 z-[100] flex flex-col overflow-x-hidden overflow-y-auto pb-[100px] animate-fade-in">
       <Header
         cat={cat}
         accent={accent}

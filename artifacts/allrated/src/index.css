@@ -5,6 +5,8 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    height: 100%;
   }
 
   body {
@@ -15,6 +17,7 @@
     color: #f4f1ec;
     letter-spacing: -0.01px;
     overflow-x: hidden;
+    height: 100%;
   }
 
   ::selection {
