@@ -1,29 +1,26 @@
 import { useState } from 'react';
 import {
-  Bell,
-  Bookmark,
-  ChevronLeft,
-  Home,
-  Loader2,
-  Plus,
   Search,
-  Star,
-  User,
-  Sparkles,
-  TrendingUp,
-  Flame,
-  Trophy,
+  Bell,
+  MoreVertical,
   Compass,
-  Heart,
-  PlayCircle,
+  CalendarDays,
+  Coffee,
+  Bookmark,
+  Flame,
+  Megaphone,
+  Loader2,
   Frown,
+  ChevronDown,
+  MessageCircle,
 } from 'lucide-react';
-import { categoryData } from '../data/catalog';
 import type { CategoryKey, Item } from '../data/catalog';
-import { Card, FeaturedCard, RankCard } from './Cards';
 import { useCatalog } from '../hooks/useCatalog';
 import { useSearch } from '../hooks/useSearch';
 import { useUserData } from '../context/userDataContext';
+import SpacesScreen from './SpacesScreen';
+import CollectionsScreen from './CollectionsScreen';
+import ProfileScreen from './ProfileScreen';
 
 interface AppScreenProps {
   cat: CategoryKey;
@@ -33,47 +30,24 @@ interface AppScreenProps {
   onToast: (msg: string) => void;
 }
 
-type NavPage = 'home' | 'search' | 'add' | 'save' | 'profile';
+type NavTab = 'explore' | 'browse' | 'spaces' | 'collections' | 'profile';
 
-export function AppScreen({
-  cat,
-  onBackToCategories,
-  onOpenItem,
-  onOpenSaved,
-  onToast,
-}: AppScreenProps) {
-  const accent = '#B048FF';
-  const accentPurpleLight = '#8F44F0';
+export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, onToast }: AppScreenProps) {
+  const [nav, setNav] = useState<NavTab>('explore');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [nav, setNav] = useState<NavPage>('home');
+  const [browseCat, setBrowseCat] = useState<CategoryKey>(cat);
+  const [weekFilter, setWeekFilter] = useState<'This Week' | 'This Month'>('This Week');
 
-  const { displayName, watchlist, favorites, continueWatching, signOut } =
-    useUserData();
-  const savedCount = watchlist.length;
+  const { displayName, watchlist, signOut } = useUserData();
 
-  const { items, loading, error } = useCatalog(cat);
-  const search = useSearch(cat, query);
+  const { items, loading, error } = useCatalog('movie');
+  const browseCatalog = useCatalog(browseCat);
+  const search = useSearch('movie', query);
   const searching = query.trim().length > 0;
 
-  const topRated = [...items].sort((a, b) => b.rating - a.rating);
-
-  const handleNav = (page: NavPage) => {
-    setNav(page);
-    if (page === 'home') {
-      setQuery('');
-      const feed = document.getElementById('mainFeed');
-      feed?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (page === 'search') {
-      const el = document.getElementById('searchInput');
-      el?.focus();
-    } else if (page === 'add') {
-      onToast('Open an item to rate & review it');
-    } else if (page === 'save') {
-      onOpenSaved();
-    } else if (page === 'profile') {
-      onToast(`Signed in as ${displayName}`);
-    }
-  };
+  const topItems = [...items].sort((a, b) => b.reviews - a.reviews).slice(0, 10);
+  const talkItems = items.slice(0, 8);
 
   const handleSignOut = () => {
     signOut()
@@ -82,142 +56,348 @@ export function AppScreen({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto pb-[100px] animate-fade-in lg:pb-[140px]">
-      <Header
-        cat={cat}
-        accent={accent}
-        savedCount={savedCount}
-        onBackToCategories={onBackToCategories}
-        onOpenSaved={onOpenSaved}
-        onToast={onToast}
-        onSignOut={handleSignOut}
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#0F1014] text-white">
+      <MoctaleHeader
+        onSearchOpen={() => { setSearchOpen(true); setNav('explore'); }}
+        onNotification={() => onToast('No new notifications')}
+        onMenu={handleSignOut}
       />
 
-      <Hero accent={accent} query={query} onQuery={setQuery} />
-
-      <div id="mainFeed" className="mx-auto w-full max-w-[1100px] flex-1 px-4 lg:px-8">
-        {searching ? (
-          <SearchResults
+      <div className="flex-1 overflow-y-auto pb-[72px]">
+        {nav === 'explore' && (
+          <ExplorePage
+            items={items}
+            topItems={topItems}
+            talkItems={talkItems}
+            loading={loading}
+            error={error}
+            searchOpen={searchOpen}
             query={query}
-            results={search.results}
-            loading={search.loading}
-            error={search.error}
-            accent={accent}
+            onQuery={setQuery}
+            onCloseSearch={() => { setSearchOpen(false); setQuery(''); }}
+            searching={searching}
+            searchResults={search.results}
+            searchLoading={search.loading}
+            weekFilter={weekFilter}
+            onWeekFilter={setWeekFilter}
+            onOpenItem={onOpenItem}
+            onToast={onToast}
+          />
+        )}
+        {nav === 'browse' && (
+          <BrowsePage
+            cat={browseCat}
+            onCatChange={setBrowseCat}
+            items={browseCatalog.items}
+            loading={browseCatalog.loading}
+            error={browseCatalog.error}
             onOpenItem={onOpenItem}
           />
-        ) : loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} />
-        ) : items.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div>
-            {continueWatching.length > 0 && (
-              <Section
-                title="Continue watching"
-                icon={<PlayCircle className="h-3.5 w-3.5" style={{ color: accent }} />}
-              >
-                <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
-                  {continueWatching.slice(0, 10).map(({ item }) => (
-                    <Card
-                      key={item.id}
-                      item={item}
-                      accent={categoryData[item.mediaType].accent}
-                      minWidth="140px"
-                      onClick={() => onOpenItem(item)}
-                    />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            <Section title="Talk of the town" icon={<Flame className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
-                {items.slice(0, 3).map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    accent={accent}
-                    minWidth="140px"
-                    onClick={() => onOpenItem(item)}
-                  />
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Trending now" icon={<TrendingUp className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {items.slice(0, 4).map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    accent={accent}
-                    onClick={() => onOpenItem(item)}
-                  />
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Featured" icon={<Sparkles className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <FeaturedCard item={items[0]} accent={accent} onClick={() => onOpenItem(items[0])} />
-            </Section>
-
-            {favorites.length > 0 && (
-              <Section
-                title="Your favorites"
-                icon={<Heart className="h-3.5 w-3.5" style={{ color: accent }} />}
-              >
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {favorites.slice(0, 8).map((item) => (
-                    <Card
-                      key={item.id}
-                      item={item}
-                      accent={categoryData[item.mediaType].accent}
-                      onClick={() => onOpenItem(item)}
-                    />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            <Section title="Top rated" icon={<Trophy className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <div className="flex flex-col gap-2">
-                {topRated.map((item, idx) => (
-                  <RankCard
-                    key={item.id}
-                    item={item}
-                    rank={idx + 1}
-                    onClick={() => onOpenItem(item)}
-                  />
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Explore" icon={<Compass className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {items.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    accent={accent}
-                    onClick={() => onOpenItem(item)}
-                  />
-                ))}
-              </div>
-            </Section>
-          </div>
+        )}
+        {nav === 'spaces' && <SpacesScreen onToast={onToast} />}
+        {nav === 'collections' && (
+          <CollectionsScreen watchlist={watchlist} onOpenItem={onOpenItem} onToast={onToast} />
+        )}
+        {nav === 'profile' && (
+          <ProfileScreen displayName={displayName} onSignOut={handleSignOut} onToast={onToast} />
         )}
       </div>
 
-      <BottomNav nav={nav} onNav={handleNav} accent={accent} accentLight={accentPurpleLight} savedCount={savedCount} />
+      <BottomNav nav={nav} onNav={setNav} />
+    </div>
+  );
+}
+
+function MoctaleHeader({
+  onSearchOpen,
+  onNotification,
+  onMenu,
+}: {
+  onSearchOpen: () => void;
+  onNotification: () => void;
+  onMenu: () => void;
+}) {
+  return (
+    <header className="flex items-center justify-between px-4 py-3.5 bg-[#0F1014]">
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white">
+          <span className="text-[#0F1014] font-black text-sm leading-none">AR</span>
+        </div>
+        <span className="text-white font-black text-[17px] tracking-wider uppercase">AllRated</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <button onClick={onSearchOpen} aria-label="Search" className="text-white/70 hover:text-white transition-colors">
+          <Search className="h-5 w-5" />
+        </button>
+        <button onClick={onNotification} aria-label="Notifications" className="text-white/70 hover:text-white transition-colors">
+          <Bell className="h-5 w-5" />
+        </button>
+        <button onClick={onMenu} aria-label="Menu" className="text-white/70 hover:text-white transition-colors">
+          <MoreVertical className="h-5 w-5" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+interface ExplorePageProps {
+  items: Item[];
+  topItems: Item[];
+  talkItems: Item[];
+  loading: boolean;
+  error: string | null;
+  searchOpen: boolean;
+  query: string;
+  onQuery: (v: string) => void;
+  onCloseSearch: () => void;
+  searching: boolean;
+  searchResults: Item[];
+  searchLoading: boolean;
+  weekFilter: 'This Week' | 'This Month';
+  onWeekFilter: (v: 'This Week' | 'This Month') => void;
+  onOpenItem: (item: Item) => void;
+  onToast: (msg: string) => void;
+}
+
+function ExplorePage({
+  items,
+  topItems,
+  talkItems,
+  loading,
+  error,
+  searchOpen,
+  query,
+  onQuery,
+  onCloseSearch,
+  searching,
+  searchResults,
+  searchLoading,
+  weekFilter,
+  onWeekFilter,
+  onOpenItem,
+}: ExplorePageProps) {
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+
+  return (
+    <div className="px-4 pt-2">
+      {searchOpen && (
+        <div className="mb-4 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => onQuery(e.target.value)}
+              placeholder="Search movies, shows, anime..."
+              className="w-full rounded-xl border border-white/10 bg-white/[0.07] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20"
+            />
+          </div>
+          <button onClick={onCloseSearch} className="text-sm text-white/55 hover:text-white px-2">
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {searching ? (
+        searchLoading ? (
+          <LoadingState />
+        ) : searchResults.length === 0 ? (
+          <div className="py-16 text-center text-white/40 text-sm">No results for "{query}"</div>
+        ) : (
+          <div>
+            <h2 className="mb-3 font-bold text-[15px]">Results for "{query}"</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {searchResults.map((item) => (
+                <TalkCard key={item.id} item={item} onClick={() => onOpenItem(item)} />
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+        <>
+          <MostInterestedSection items={topItems} weekFilter={weekFilter} onWeekFilter={onWeekFilter} onOpenItem={onOpenItem} />
+          <TalkOfTheTownSection items={talkItems} onOpenItem={onOpenItem} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function MostInterestedSection({
+  items,
+  weekFilter,
+  onWeekFilter,
+  onOpenItem,
+}: {
+  items: Item[];
+  weekFilter: 'This Week' | 'This Month';
+  onWeekFilter: (v: 'This Week' | 'This Month') => void;
+  onOpenItem: (item: Item) => void;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  return (
+    <section className="mb-7">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-[16px] font-bold text-white">
+          <Flame className="h-4 w-4 text-orange-400" />
+          Most Interested
+        </h2>
+        <div className="relative">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/[0.12] transition-colors"
+          >
+            {weekFilter}
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          {showDropdown && (
+            <div className="absolute right-0 top-full mt-1 z-50 rounded-xl border border-white/10 bg-[#1A1B1F] shadow-xl overflow-hidden">
+              {(['This Week', 'This Month'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => { onWeekFilter(opt); setShowDropdown(false); }}
+                  className="block w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 transition-colors"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+        {items.slice(0, 8).map((item, idx) => (
+          <RankedCard key={item.id} item={item} rank={idx + 1} onClick={() => onOpenItem(item)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RankedCard({ item, rank, onClick }: { item: Item; rank: number; onClick: () => void }) {
+  const interestedCount = Math.floor(item.reviews * 0.4 + rank * 50);
+  const displayCount =
+    interestedCount >= 1000
+      ? (interestedCount / 1000).toFixed(1) + 'K'
+      : String(interestedCount);
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#1A1B1F] p-3 text-left transition-all hover:border-white/20 hover:bg-[#21222A] active:scale-95"
+      style={{ width: '230px' }}
+    >
+      <span className="text-[36px] font-black text-white/20 leading-none w-8 text-center">{rank}</span>
+      <div
+        className="h-14 w-10 flex-shrink-0 rounded-lg bg-white/10 overflow-hidden"
+        style={{ background: item.image ? undefined : '#2a2a30' }}
+      >
+        {item.image && (
+          <img src={item.image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-[13px] text-white truncate">{item.name}</p>
+        <p className="text-[11px] text-white/40 mt-0.5 truncate">{item.subtitle}</p>
+        <div className="flex items-center gap-1 mt-1.5">
+          <Flame className="h-3 w-3 text-orange-400" />
+          <span className="text-[11px] font-semibold text-orange-400">{displayCount} Interested</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function TalkOfTheTownSection({ items, onOpenItem }: { items: Item[]; onOpenItem: (item: Item) => void }) {
+  return (
+    <section className="mb-7">
+      <h2 className="mb-3 flex items-center gap-2 text-[16px] font-bold text-white">
+        <Megaphone className="h-4 w-4 text-white/80" />
+        Talk Of The Town
+      </h2>
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((item) => (
+          <TalkCard key={item.id} item={item} onClick={() => onOpenItem(item)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TalkCard({ item, onClick }: { item: Item; onClick: () => void }) {
+  const label = item.mediaType === 'movie' ? 'New Movie' : item.mediaType === 'tv' ? 'New Series' : 'New Anime';
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col rounded-2xl overflow-hidden bg-[#1A1B1F] text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+    >
+      <div className="aspect-[2/3] w-full bg-[#2a2a30] overflow-hidden">
+        {item.image ? (
+          <img src={item.image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-white/20 text-3xl">{item.emoji}</div>
+        )}
+      </div>
+      <div className="px-2.5 py-2.5">
+        <p className="font-semibold text-[13px] text-white leading-tight line-clamp-2">{item.name}</p>
+        <p className="text-[11px] text-white/40 mt-0.5">{label}</p>
+      </div>
+    </button>
+  );
+}
+
+interface BrowsePageProps {
+  cat: CategoryKey;
+  onCatChange: (c: CategoryKey) => void;
+  items: Item[];
+  loading: boolean;
+  error: string | null;
+  onOpenItem: (item: Item) => void;
+}
+
+function BrowsePage({ cat, onCatChange, items, loading, error, onOpenItem }: BrowsePageProps) {
+  const tabs: { key: CategoryKey; label: string }[] = [
+    { key: 'movie', label: 'Movies' },
+    { key: 'tv', label: 'TV Shows' },
+    { key: 'anime', label: 'Anime' },
+  ];
+
+  return (
+    <div className="px-4 pt-2">
+      <div className="mb-4 flex gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => onCatChange(t.key)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+              cat === t.key ? 'bg-white text-[#0F1014]' : 'border border-white/15 text-white/60 hover:text-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {items.map((item) => (
+            <TalkCard key={item.id} item={item} onClick={() => onOpenItem(item)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function LoadingState() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-white/55">
+    <div className="flex flex-col items-center justify-center py-24 text-white/40">
       <Loader2 className="mb-3 h-7 w-7 animate-spin" />
       <p className="text-[13px]">Loading…</p>
     </div>
@@ -226,236 +406,44 @@ function LoadingState() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="py-20 text-center text-white/55">
+    <div className="py-20 text-center text-white/40">
       <Frown className="mx-auto mb-2.5 h-7 w-7 opacity-60" />
       <p className="text-[13px]">{message}</p>
     </div>
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="py-20 text-center text-white/55">
-      <p className="text-[13px]">Nothing to show right now.</p>
-    </div>
-  );
-}
-
-interface HeaderProps {
-  cat: CategoryKey;
-  accent: string;
-  savedCount: number;
-  onBackToCategories: () => void;
-  onOpenSaved: () => void;
-  onToast: (msg: string) => void;
-  onSignOut: () => void;
-}
-
-function Header({ cat, accent, savedCount, onBackToCategories, onOpenSaved, onToast, onSignOut }: HeaderProps) {
-  return (
-    <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/[0.09] bg-ink-900/80 px-4 py-3.5 backdrop-blur-md lg:px-8">
-      <div className="flex items-center gap-2.5">
-        <button
-          onClick={onBackToCategories}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.045] text-white transition-all hover:border-white/20 hover:bg-white/[0.08] lg:hidden"
-          aria-label="Back to categories"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onBackToCategories}
-          className="hidden items-center gap-1.5 py-1.5 pr-2 lg:flex"
-        >
-          <Star className="h-4 w-4" style={{ color: accent }} />
-          <span className="font-display text-[15px] font-black uppercase tracking-wider">AllRated</span>
-        </button>
-        <span className="rounded-full border border-white/[0.09] bg-white/[0.045] px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-white/55">
-          {categoryData[cat].label}
-        </span>
-      </div>
-      <div className="flex gap-3">
-        <IconButton onClick={() => onToast('No new notifications')} ariaLabel="Notifications">
-          <Bell className="h-4 w-4" />
-        </IconButton>
-        <IconButton onClick={onOpenSaved} ariaLabel="Saved">
-          <Bookmark className="h-4 w-4" />
-          {savedCount > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-              {savedCount}
-            </span>
-          )}
-        </IconButton>
-        <IconButton onClick={onSignOut} ariaLabel="Sign out">
-          <User className="h-4 w-4" />
-        </IconButton>
-      </div>
-    </header>
-  );
-}
-
-function IconButton({
-  children,
-  onClick,
-  ariaLabel,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  ariaLabel: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.045] text-white transition-all hover:border-white/20 hover:bg-white/[0.08]"
-    >
-      {children}
-    </button>
-  );
-}
-
-interface HeroProps {
-  accent: string;
-  query: string;
-  onQuery: (v: string) => void;
-}
-
-function Hero({ accent, query, onQuery }: HeroProps) {
-  return (
-    <div
-      className="mx-auto w-full max-w-[1100px] px-4 pb-5 pt-7 lg:px-8 lg:pt-10"
-      style={{
-        background: `radial-gradient(ellipse 70% 55% at 25% 0%, ${accent}40, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 10%, ${accent}30, transparent 70%)`,
-      }}
-    >
-      <h1 className="mb-4 font-display text-[30px] font-black tracking-tight lg:text-[42px]">
-        Rate. Review. Discover.
-      </h1>
-      <div className="relative flex items-center">
-        <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-white/55" />
-        <input
-          id="searchInput"
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search items, brands, genres..."
-          className="w-full rounded-[14px] border border-white/[0.09] bg-white/[0.045] py-3 pl-10 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/55 focus:border-white/20 focus:bg-white/[0.08] focus:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
-        />
-      </div>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-8">
-      <h2 className="mb-3.5 flex items-center gap-2 text-base font-bold lg:text-[16px]">
-        <span>{icon}</span>
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-interface SearchResultsProps {
-  query: string;
-  results: Item[];
-  loading: boolean;
-  error: string | null;
-  accent: string;
-  onOpenItem: (item: Item) => void;
-}
-
-function SearchResults({ query, results, loading, error, accent, onOpenItem }: SearchResultsProps) {
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} />;
-  if (results.length === 0) {
-    return (
-      <div className="py-10 text-center text-white/55">
-        <Frown className="mx-auto mb-2.5 h-7 w-7 opacity-60" />
-        <p className="text-[13px]">No results for "{query.trim()}"</p>
-      </div>
-    );
-  }
-  return (
-    <section className="mb-8">
-      <h2 className="mb-3.5 text-base font-bold">Results for "{query.trim()}"</h2>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {results.map((item) => (
-          <Card
-            key={item.id}
-            item={item}
-            accent={accent}
-            onClick={() => onOpenItem(item)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
 interface BottomNavProps {
-  nav: NavPage;
-  onNav: (p: NavPage) => void;
-  accent: string;
-  accentLight: string;
-  savedCount: number;
+  nav: NavTab;
+  onNav: (t: NavTab) => void;
 }
 
-function BottomNav({ nav, onNav, accent, accentLight, savedCount }: BottomNavProps) {
-  const items: { key: NavPage; icon: React.ReactNode; label: string }[] = [
-    { key: 'home', icon: <Home className="h-[18px] w-[18px]" />, label: 'Home' },
-    { key: 'search', icon: <Search className="h-[18px] w-[18px]" />, label: 'Search' },
-    { key: 'add', icon: <Plus className="h-4 w-4" />, label: 'Add' },
-    { key: 'save', icon: <Bookmark className="h-[18px] w-[18px]" />, label: 'Saved' },
-    { key: 'profile', icon: <User className="h-[18px] w-[18px]" />, label: 'Profile' },
+function BottomNav({ nav, onNav }: BottomNavProps) {
+  const tabs: { key: NavTab; icon: React.ReactNode; label: string }[] = [
+    { key: 'explore', icon: <Compass className="h-[22px] w-[22px]" />, label: 'Explore' },
+    { key: 'browse', icon: <CalendarDays className="h-[22px] w-[22px]" />, label: 'Browse' },
+    { key: 'spaces', icon: <Coffee className="h-[22px] w-[22px]" />, label: 'Spaces' },
+    { key: 'collections', icon: <Bookmark className="h-[22px] w-[22px]" />, label: 'Collections' },
+    { key: 'profile', icon: <MessageCircle className="h-[22px] w-[22px]" />, label: 'Profile' },
   ];
 
   return (
     <nav
-      className="fixed bottom-[18px] left-1/2 z-[100] flex h-[66px] w-[calc(100%-32px)] max-w-[380px] -translate-x-1/2 items-center justify-around gap-1 rounded-full border border-white/[0.09] bg-ink-700/90 px-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl lg:max-w-[420px]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around border-t border-white/[0.06] bg-[#0F1014] px-2 pb-[env(safe-area-inset-bottom)]"
+      style={{ height: '64px' }}
     >
-      {items.map((it) => {
-        const isAdd = it.key === 'add';
-        if (isAdd) {
-          return (
-            <button
-              key={it.key}
-              onClick={() => onNav(it.key)}
-              aria-label={it.label}
-              className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-white shadow-[0_6px_18px_rgba(176,72,255,0.45)] transition-all hover:scale-110 active:scale-95"
-              style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%)` }}
-            >
-              {it.icon}
-            </button>
-          );
-        }
-        const active = nav === it.key;
+      {tabs.map((t) => {
+        const active = nav === t.key;
         return (
           <button
-            key={it.key}
-            onClick={() => onNav(it.key)}
-            aria-label={it.label}
-            className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-full transition-all ${
-              active
-                ? 'bg-white text-ink-900'
-                : 'text-white/55 hover:bg-white/[0.08] hover:text-white'
+            key={t.key}
+            onClick={() => onNav(t.key)}
+            aria-label={t.label}
+            className={`flex flex-col items-center justify-center gap-1 transition-all ${
+              active ? 'text-white' : 'text-white/35 hover:text-white/60'
             }`}
           >
-            {it.icon}
-            {it.key === 'save' && savedCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white">
-                {savedCount}
-              </span>
-            )}
+            {t.icon}
           </button>
         );
       })}
