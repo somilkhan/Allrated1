@@ -183,6 +183,113 @@ interface CreditsResponse {
   crew: { id: number; name: string; job: string }[];
 }
 
+// ---------------------------------------------------------------------------
+// Trailers
+// ---------------------------------------------------------------------------
+
+interface VideoResult {
+  key: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+
+interface VideosResponse {
+  results: VideoResult[];
+}
+
+export async function fetchTmdbTrailer(
+  mediaType: TmdbMediaType,
+  externalId: number,
+): Promise<string | null> {
+  try {
+    const data = await tmdbFetch<VideosResponse>(
+      `/${mediaType}/${externalId}/videos`,
+      { language: 'en-US' },
+    );
+    // Prefer official trailers, then any trailer
+    const official = data.results.find(
+      (v) => v.type === 'Trailer' && v.site === 'YouTube' && v.official,
+    );
+    const any = data.results.find(
+      (v) => v.type === 'Trailer' && v.site === 'YouTube',
+    );
+    return official?.key ?? any?.key ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Watch Providers
+// ---------------------------------------------------------------------------
+
+interface WatchProviderRaw {
+  logo_path: string;
+  provider_id: number;
+  provider_name: string;
+  display_priority: number;
+}
+
+interface WatchProviderRegionRaw {
+  link: string;
+  flatrate?: WatchProviderRaw[];
+  rent?: WatchProviderRaw[];
+  buy?: WatchProviderRaw[];
+}
+
+interface WatchProvidersResponse {
+  id: number;
+  results: Record<string, WatchProviderRegionRaw>;
+}
+
+export interface ProviderInfo {
+  id: number;
+  name: string;
+  logoUrl: string;
+}
+
+export interface WatchOptions {
+  link: string;
+  flatrate: ProviderInfo[];
+  rent: ProviderInfo[];
+  buy: ProviderInfo[];
+}
+
+function mapProvider(p: WatchProviderRaw): ProviderInfo {
+  return {
+    id: p.provider_id,
+    name: p.provider_name,
+    logoUrl: `${IMG_BASE}/w92${p.logo_path}`,
+  };
+}
+
+export async function fetchTmdbWatchProviders(
+  mediaType: TmdbMediaType,
+  externalId: number,
+  region = 'IN',
+): Promise<WatchOptions | null> {
+  try {
+    const data = await tmdbFetch<WatchProvidersResponse>(
+      `/${mediaType}/${externalId}/watch/providers`,
+    );
+    const regionData = data.results[region];
+    if (!regionData) return null;
+    return {
+      link: regionData.link,
+      flatrate: (regionData.flatrate ?? []).sort((a, b) => a.display_priority - b.display_priority).map(mapProvider),
+      rent: (regionData.rent ?? []).sort((a, b) => a.display_priority - b.display_priority).map(mapProvider),
+      buy: (regionData.buy ?? []).sort((a, b) => a.display_priority - b.display_priority).map(mapProvider),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Credits
+// ---------------------------------------------------------------------------
+
 export async function fetchTmdbCredits(
   mediaType: TmdbMediaType,
   externalId: number,

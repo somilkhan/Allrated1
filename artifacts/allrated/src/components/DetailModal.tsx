@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, Bookmark, PenLine, Heart, Loader2, Star } from 'lucide-react';
+import { X, Bookmark, PenLine, Heart, Loader2, Star, Play, ExternalLink, AlertCircle } from 'lucide-react';
 import {
   getMetrics,
   getVerdict,
@@ -19,7 +19,14 @@ import {
   type TierKey,
   type TierVoteCounts,
 } from '../api/userData';
-import { fetchTmdbCredits, type CrewMember, type CastMember } from '../api/tmdb';
+import {
+  fetchTmdbCredits,
+  fetchTmdbTrailer,
+  fetchTmdbWatchProviders,
+  type CrewMember,
+  type CastMember,
+  type WatchOptions,
+} from '../api/tmdb';
 import { getMockReviews } from '../data/mockReviews';
 import { decodeId } from '../api/ids';
 
@@ -130,6 +137,193 @@ function getInitials(name: string): string {
 
 // ---------------------------------------------------------------------------
 // Sub-components
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// YouTube Lightbox
+// ---------------------------------------------------------------------------
+
+function TrailerLightbox({ youtubeKey, onClose }: { youtubeKey: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-2xl">
+        <button
+          onClick={onClose}
+          className="absolute -right-1 -top-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20"
+          aria-label="Close trailer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute inset-0 h-full w-full"
+            src={`https://www.youtube.com/embed/${youtubeKey}?autoplay=1&rel=0`}
+            title="Trailer"
+            allow="autoplay; encrypted-media; fullscreen"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Watch Online Section
+// ---------------------------------------------------------------------------
+
+function WatchOnlineSection({
+  options,
+  watchLink,
+  loading,
+}: {
+  options: WatchOptions | null;
+  watchLink: string;
+  loading: boolean;
+}) {
+  const hasAny =
+    options &&
+    (options.flatrate.length > 0 || options.rent.length > 0 || options.buy.length > 0);
+
+  return (
+    <div className="mb-5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <h3 className="text-sm font-bold">Watch Online</h3>
+        {hasAny && (
+          <a
+            href={watchLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/70 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            All options
+          </a>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex h-14 items-center justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+        </div>
+      ) : !hasAny ? (
+        <div className="rounded-xl border border-white/[0.09] bg-white/[0.03] p-4 text-center">
+          <p className="text-[12px] text-white/35">Not available to stream in your region</p>
+          <a
+            href={watchLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-white/40 underline underline-offset-2 hover:text-white/70"
+          >
+            Check TMDB for options
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {options!.flatrate.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-white/40">Stream</p>
+              <div className="flex flex-wrap gap-2">
+                {options!.flatrate.map((p) => (
+                  <a
+                    key={p.id}
+                    href={watchLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={p.name}
+                    className="group flex flex-col items-center gap-1"
+                  >
+                    <img
+                      src={p.logoUrl}
+                      alt={p.name}
+                      className="h-10 w-10 rounded-[10px] border border-white/10 object-cover transition-all group-hover:border-white/30 group-hover:scale-105"
+                    />
+                    <span className="max-w-[44px] truncate text-center text-[9px] text-white/45 group-hover:text-white/70">
+                      {p.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {options!.rent.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-white/40">Rent</p>
+              <div className="flex flex-wrap gap-2">
+                {options!.rent.map((p) => (
+                  <a
+                    key={p.id}
+                    href={watchLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={p.name}
+                    className="group flex flex-col items-center gap-1"
+                  >
+                    <img
+                      src={p.logoUrl}
+                      alt={p.name}
+                      className="h-10 w-10 rounded-[10px] border border-white/10 object-cover transition-all group-hover:border-white/30 group-hover:scale-105"
+                    />
+                    <span className="max-w-[44px] truncate text-center text-[9px] text-white/45 group-hover:text-white/70">
+                      {p.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {options!.buy.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-white/40">Buy</p>
+              <div className="flex flex-wrap gap-2">
+                {options!.buy.map((p) => (
+                  <a
+                    key={p.id}
+                    href={watchLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={p.name}
+                    className="group flex flex-col items-center gap-1"
+                  >
+                    <img
+                      src={p.logoUrl}
+                      alt={p.name}
+                      className="h-10 w-10 rounded-[10px] border border-white/10 object-cover transition-all group-hover:border-white/30 group-hover:scale-105"
+                    />
+                    <span className="max-w-[44px] truncate text-center text-[9px] text-white/45 group-hover:text-white/70">
+                      {p.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <AlertCircle className="h-3 w-3 shrink-0 text-white/25" />
+            <span className="text-[10px] text-white/30">Broken link? <a href={watchLink} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white/60">Report on TMDB</a></span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Crew / Cast
 // ---------------------------------------------------------------------------
 
 function CrewSection({ crew }: { crew: CrewMember[] }) {
@@ -390,7 +584,17 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
   const [selectedTier, setSelectedTier] = useState<TierKey | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Trailer state
+  const [trailerKey, setTrailerKey] = useState<string | null>(null);
+  const [showTrailer, setShowTrailer] = useState(false);
+
+  // Watch providers state
+  const [watchOptions, setWatchOptions] = useState<WatchOptions | null>(null);
+  const [watchLoading, setWatchLoading] = useState(false);
+  const [watchLink, setWatchLink] = useState('');
+
   const { mediaType, externalId } = decodeId(item.id);
+  const isTmdb = mediaType === 'movie' || mediaType === 'tv';
   const verdict = getVerdict(item.rating);
   const metrics = getMetrics(item);
   const hero = item.backdrop ?? item.image;
@@ -417,14 +621,25 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
     }
   }, [configured, item.id, user?.id]);
 
-  // Load cast + crew (TMDB only)
+  // Load cast + crew, trailer, and watch providers for TMDB titles
   useEffect(() => {
-    if (mediaType === 'movie' || mediaType === 'tv') {
-      fetchTmdbCredits(mediaType, externalId)
-        .then(({ cast: c, crew: cr }) => { setCast(c); setCrew(cr); })
-        .catch(() => undefined);
-    }
-  }, [mediaType, externalId]);
+    if (!isTmdb) return;
+    fetchTmdbCredits(mediaType as 'movie' | 'tv', externalId)
+      .then(({ cast: c, crew: cr }) => { setCast(c); setCrew(cr); })
+      .catch(() => undefined);
+
+    fetchTmdbTrailer(mediaType as 'movie' | 'tv', externalId)
+      .then((key) => setTrailerKey(key))
+      .catch(() => undefined);
+
+    const tmdbPath = mediaType === 'movie' ? 'movie' : 'tv';
+    setWatchLink(`https://www.themoviedb.org/${tmdbPath}/${externalId}/watch`);
+    setWatchLoading(true);
+    fetchTmdbWatchProviders(mediaType as 'movie' | 'tv', externalId)
+      .then((opts) => setWatchOptions(opts))
+      .catch(() => setWatchOptions(null))
+      .finally(() => setWatchLoading(false));
+  }, [isTmdb, mediaType, externalId]);
 
   useEffect(() => {
     loadReviews();
@@ -520,6 +735,11 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
         <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
       </button>
 
+      {/* Trailer lightbox */}
+      {showTrailer && trailerKey && (
+        <TrailerLightbox youtubeKey={trailerKey} onClose={() => setShowTrailer(false)} />
+      )}
+
       {/* Hero */}
       <div
         className="relative flex aspect-square w-full items-center justify-center overflow-hidden text-[80px]"
@@ -531,6 +751,25 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
           <img src={hero} alt={item.name} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           item.emoji
+        )}
+        {/* Gradient overlay for contrast */}
+        {hero && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        )}
+        {/* Play button — only shown when a trailer exists */}
+        {trailerKey && (
+          <button
+            onClick={() => setShowTrailer(true)}
+            className="absolute inset-0 flex items-center justify-center group"
+            aria-label="Play trailer"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 bg-black/40 backdrop-blur-sm transition-all group-hover:scale-110 group-hover:bg-black/60 group-hover:border-white">
+              <Play className="h-6 w-6 fill-white text-white ml-0.5" />
+            </div>
+            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur-sm">
+              Watch Trailer
+            </span>
+          </button>
         )}
       </div>
 
@@ -577,6 +816,15 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
             {item.overview || 'No description available yet.'}
           </p>
         </div>
+
+        {/* Watch Online — TMDB titles only */}
+        {isTmdb && (
+          <WatchOnlineSection
+            options={watchOptions}
+            watchLink={watchLink}
+            loading={watchLoading}
+          />
+        )}
 
         {/* Rating Meter — circular gauge */}
         <TierGauge counts={configured ? tierVotes : null} />
