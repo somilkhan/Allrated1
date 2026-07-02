@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter @workspace/allrated run build",
+  "outputDirectory": "artifacts/allrated/dist",
+  "installCommand": "pnpm install",
+  "framework": null
+}
