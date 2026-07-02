@@ -4,6 +4,7 @@ import {
   Bookmark,
   ChevronLeft,
   Home,
+  Loader2,
   Plus,
   Search,
   Star,
@@ -13,17 +14,19 @@ import {
   Flame,
   Trophy,
   Compass,
-  Layers,
+  Heart,
+  PlayCircle,
   Frown,
 } from 'lucide-react';
 import { categoryData } from '../data/catalog';
 import type { CategoryKey, Item } from '../data/catalog';
 import { Card, FeaturedCard, RankCard } from './Cards';
+import { useCatalog } from '../hooks/useCatalog';
+import { useSearch } from '../hooks/useSearch';
+import { useUserData } from '../context/userDataContext';
 
 interface AppScreenProps {
   cat: CategoryKey;
-  user: string;
-  savedCount: number;
   onBackToCategories: () => void;
   onOpenItem: (item: Item) => void;
   onOpenSaved: () => void;
@@ -34,8 +37,6 @@ type NavPage = 'home' | 'search' | 'add' | 'save' | 'profile';
 
 export function AppScreen({
   cat,
-  user,
-  savedCount,
   onBackToCategories,
   onOpenItem,
   onOpenSaved,
@@ -46,23 +47,15 @@ export function AppScreen({
   const [query, setQuery] = useState('');
   const [nav, setNav] = useState<NavPage>('home');
 
-  const items = meta.items;
+  const { displayName, watchlist, favorites, continueWatching, signOut } =
+    useUserData();
+  const savedCount = watchlist.length;
+
+  const { items, loading, error } = useCatalog(cat);
+  const search = useSearch(cat, query);
   const searching = query.trim().length > 0;
-  const filtered = searching
-    ? items.filter(
-        (i) =>
-          i.name.toLowerCase().includes(query.trim().toLowerCase()) ||
-          i.subtitle.toLowerCase().includes(query.trim().toLowerCase()),
-      )
-    : [];
 
   const topRated = [...items].sort((a, b) => b.rating - a.rating);
-  const collections = [
-    { name: 'My Favorites', count: 12 },
-    { name: 'Summer Vibes', count: 8 },
-    { name: 'Best Value', count: 15 },
-    { name: 'New Releases', count: 6 },
-  ];
 
   const handleNav = (page: NavPage) => {
     setNav(page);
@@ -74,12 +67,18 @@ export function AppScreen({
       const el = document.getElementById('searchInput');
       el?.focus();
     } else if (page === 'add') {
-      onToast('Write review — coming soon');
+      onToast('Open an item to rate & review it');
     } else if (page === 'save') {
       onOpenSaved();
     } else if (page === 'profile') {
-      onToast(`Profile: ${user}`);
+      onToast(`Signed in as ${displayName}`);
     }
+  };
+
+  const handleSignOut = () => {
+    signOut()
+      .then(() => onToast('Signed out'))
+      .catch(() => onToast('Failed to sign out'));
   };
 
   return (
@@ -91,25 +90,48 @@ export function AppScreen({
         onBackToCategories={onBackToCategories}
         onOpenSaved={onOpenSaved}
         onToast={onToast}
-        user={user}
+        onSignOut={handleSignOut}
       />
 
-      <Hero
-        accent={accent}
-        query={query}
-        onQuery={setQuery}
-      />
+      <Hero accent={accent} query={query} onQuery={setQuery} />
 
       <div id="mainFeed" className="mx-auto w-full max-w-[1100px] flex-1 px-4 lg:px-8">
         {searching ? (
           <SearchResults
             query={query}
-            filtered={filtered}
+            results={search.results}
+            loading={search.loading}
+            error={search.error}
             accent={accent}
             onOpenItem={onOpenItem}
           />
+        ) : loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} />
+        ) : items.length === 0 ? (
+          <EmptyState />
         ) : (
           <div>
+            {continueWatching.length > 0 && (
+              <Section
+                title="Continue watching"
+                icon={<PlayCircle className="h-3.5 w-3.5" style={{ color: accent }} />}
+              >
+                <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
+                  {continueWatching.slice(0, 10).map(({ item }) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      accent={categoryData[item.mediaType].accent}
+                      minWidth="140px"
+                      onClick={() => onOpenItem(item)}
+                    />
+                  ))}
+                </div>
+              </Section>
+            )}
+
             <Section title="Talk of the town" icon={<Flame className="h-3.5 w-3.5" style={{ color: accent }} />}>
               <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
                 {items.slice(0, 3).map((item) => (
@@ -141,22 +163,23 @@ export function AppScreen({
               <FeaturedCard item={items[0]} accent={accent} onClick={() => onOpenItem(items[0])} />
             </Section>
 
-            <Section title="Collections" icon={<Layers className="h-3.5 w-3.5" style={{ color: accent }} />}>
-              <div className="flex flex-col gap-2.5">
-                {collections.map((col) => (
-                  <button
-                    key={col.name}
-                    className="flex items-center justify-between rounded-[14px] border border-white/[0.09] bg-ink-600/60 p-3.5 text-left transition-all duration-300 hover:translate-x-1 hover:border-white/20 hover:bg-white/[0.08]"
-                  >
-                    <div>
-                      <div className="text-[13px] font-semibold">{col.name}</div>
-                      <div className="mt-0.5 text-[11px] text-white/55">{col.count} items</div>
-                    </div>
-                    <span className="text-base text-white/55">→</span>
-                  </button>
-                ))}
-              </div>
-            </Section>
+            {favorites.length > 0 && (
+              <Section
+                title="Your favorites"
+                icon={<Heart className="h-3.5 w-3.5" style={{ color: accent }} />}
+              >
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  {favorites.slice(0, 8).map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      accent={categoryData[item.mediaType].accent}
+                      onClick={() => onOpenItem(item)}
+                    />
+                  ))}
+                </div>
+              </Section>
+            )}
 
             <Section title="Top rated" icon={<Trophy className="h-3.5 w-3.5" style={{ color: accent }} />}>
               <div className="flex flex-col gap-2">
@@ -192,6 +215,32 @@ export function AppScreen({
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-white/55">
+      <Loader2 className="mb-3 h-7 w-7 animate-spin" />
+      <p className="text-[13px]">Loading…</p>
+    </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="py-20 text-center text-white/55">
+      <Frown className="mx-auto mb-2.5 h-7 w-7 opacity-60" />
+      <p className="text-[13px]">{message}</p>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="py-20 text-center text-white/55">
+      <p className="text-[13px]">Nothing to show right now.</p>
+    </div>
+  );
+}
+
 interface HeaderProps {
   cat: CategoryKey;
   accent: string;
@@ -199,10 +248,10 @@ interface HeaderProps {
   onBackToCategories: () => void;
   onOpenSaved: () => void;
   onToast: (msg: string) => void;
-  user: string;
+  onSignOut: () => void;
 }
 
-function Header({ cat, accent, savedCount, onBackToCategories, onOpenSaved, onToast, user }: HeaderProps) {
+function Header({ cat, accent, savedCount, onBackToCategories, onOpenSaved, onToast, onSignOut }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/[0.09] bg-ink-900/80 px-4 py-3.5 backdrop-blur-md lg:px-8">
       <div className="flex items-center gap-2.5">
@@ -236,7 +285,7 @@ function Header({ cat, accent, savedCount, onBackToCategories, onOpenSaved, onTo
             </span>
           )}
         </IconButton>
-        <IconButton onClick={() => onToast(`Signed in as ${user}`)} ariaLabel="Profile">
+        <IconButton onClick={onSignOut} ariaLabel="Sign out">
           <User className="h-4 w-4" />
         </IconButton>
       </div>
@@ -317,13 +366,17 @@ function Section({
 
 interface SearchResultsProps {
   query: string;
-  filtered: Item[];
+  results: Item[];
+  loading: boolean;
+  error: string | null;
   accent: string;
   onOpenItem: (item: Item) => void;
 }
 
-function SearchResults({ query, filtered, accent, onOpenItem }: SearchResultsProps) {
-  if (filtered.length === 0) {
+function SearchResults({ query, results, loading, error, accent, onOpenItem }: SearchResultsProps) {
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (results.length === 0) {
     return (
       <div className="py-10 text-center text-white/55">
         <Frown className="mx-auto mb-2.5 h-7 w-7 opacity-60" />
@@ -335,7 +388,7 @@ function SearchResults({ query, filtered, accent, onOpenItem }: SearchResultsPro
     <section className="mb-8">
       <h2 className="mb-3.5 text-base font-bold">Results for "{query.trim()}"</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {filtered.map((item) => (
+        {results.map((item) => (
           <Card
             key={item.id}
             item={item}
