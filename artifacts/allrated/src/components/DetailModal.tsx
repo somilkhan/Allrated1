@@ -447,7 +447,8 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
     if (myReview) {
       setScore(myReview.score);
       setText(myReview.review);
-      setSelectedTier(myReview.tier);
+      // Prefer tier_votes source (always current); fall back to rating row for legacy data
+      setSelectedTier(tierVotes?.myTier ?? myReview.tier ?? null);
     }
   }, [myReview]);
 
@@ -492,8 +493,8 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
     try {
       // Save the review — this is the critical write
       await upsertRating({ userId: user.id, author: displayName, item, score, review: text.trim(), tier: selectedTier });
-      // Save tier vote — best-effort, don't let a failure block the review
-      upsertTierVote(user.id, item.id, selectedTier).catch(() => undefined);
+      // Save tier vote — guarded so gauge refresh sees the committed vote
+      try { await upsertTierVote(user.id, item.id, selectedTier); } catch { /* non-fatal */ }
       onToast('Review saved');
       setShowForm(false);
       await Promise.all([loadReviews(), loadTierVotes()]);

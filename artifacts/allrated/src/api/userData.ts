@@ -162,7 +162,7 @@ function mapRating(row: RatingRow): Rating {
 export async function fetchRatings(itemId: number): Promise<Rating[]> {
   const { data, error } = await requireSupabase()
     .from('ratings')
-    .select('id, item_id, user_id, author, score, review, tier, created_at')
+    .select('id, item_id, user_id, author, score, review, created_at')
     .eq('item_id', itemId)
     .order('created_at', { ascending: false });
   if (error) throw error;
