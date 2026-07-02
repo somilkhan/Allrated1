@@ -9,7 +9,6 @@ export type TmdbMediaType = 'movie' | 'tv';
 
 const EMOJI: Record<TmdbMediaType, string> = { movie: '🎬', tv: '📺' };
 
-// TMDB genre ids are stable; hardcoding avoids an extra request per view.
 const GENRES: Record<number, string> = {
   28: 'Action',
   12: 'Adventure',
@@ -56,6 +55,23 @@ interface TmdbRaw {
   runtime?: number;
   number_of_seasons?: number;
   number_of_episodes?: number;
+  origin_country?: string[];
+  original_language?: string;
+  spoken_languages?: { english_name: string; iso_639_1: string }[];
+  production_companies?: { id: number; name: string; logo_path: string | null; origin_country: string }[];
+  videos?: {
+    results: { key: string; site: string; type: string; official: boolean; published_at: string }[];
+  };
+  credits?: {
+    cast: { id: number; name: string; character: string; profile_path: string | null; order: number }[];
+    crew: { id: number; name: string; job: string; department: string; profile_path: string | null }[];
+  };
+  release_dates?: {
+    results: { iso_3166_1: string; release_dates: { certification: string; type: number }[] }[];
+  };
+  content_ratings?: {
+    results: { iso_3166_1: string; rating: string }[];
+  };
 }
 
 interface TmdbListResponse {
@@ -161,4 +177,139 @@ export async function getTmdbDetails(
     language: 'en-US',
   });
   return mapTmdb(raw, mediaType);
+}
+
+// ── Extended details (all-in-one for detail page) ───────────────────────────
+
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character: string;
+  profileUrl: string | null;
+}
+
+export interface TmdbCrewMember {
+  id: number;
+  name: string;
+  job: string;
+  profileUrl: string | null;
+}
+
+export interface TmdbExtended {
+  item: Item;
+  genres: { id: number; name: string }[];
+  trailerKey: string | null;
+  cast: TmdbCastMember[];
+  director: string | null;
+  writers: TmdbCrewMember[];
+  ageRating: string | null;
+  country: string | null;
+  language: string | null;
+  productionCompanies: { id: number; name: string }[];
+  runtime: string | null;
+  year: string;
+}
+
+function extractTrailerKey(raw: TmdbRaw): string | null {
+  const videos = raw.videos?.results ?? [];
+  const official = videos.find((v) => v.type === 'Trailer' && v.site === 'YouTube' && v.official);
+  const any = videos.find((v) => v.type === 'Trailer' && v.site === 'YouTube');
+  const teaser = videos.find((v) => v.type === 'Teaser' && v.site === 'YouTube');
+  return official?.key ?? any?.key ?? teaser?.key ?? null;
+}
+
+function extractAgeRating(raw: TmdbRaw, mediaType: TmdbMediaType): string | null {
+  if (mediaType === 'movie') {
+    const usEntry = raw.release_dates?.results?.find((r) => r.iso_3166_1 === 'US');
+    const cert = usEntry?.release_dates?.find((d) => d.certification)?.certification;
+    if (cert) return cert;
+    const firstEntry = raw.release_dates?.results?.[0];
+    return firstEntry?.release_dates?.find((d) => d.certification)?.certification ?? null;
+  } else {
+    const usEntry = raw.content_ratings?.results?.find((r) => r.iso_3166_1 === 'US');
+    if (usEntry?.rating) return usEntry.rating;
+    return raw.content_ratings?.results?.[0]?.rating ?? null;
+  }
+}
+
+const COUNTRY_NAMES: Record<string, string> = {
+  US: 'USA', IN: 'India', GB: 'UK', JP: 'Japan', KR: 'South Korea',
+  FR: 'France', DE: 'Germany', IT: 'Italy', ES: 'Spain', AU: 'Australia',
+  CA: 'Canada', CN: 'China', BR: 'Brazil', MX: 'Mexico', RU: 'Russia',
+};
+
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', hi: 'Hindi', ta: 'Tamil', te: 'Telugu', ja: 'Japanese',
+  ko: 'Korean', fr: 'French', de: 'German', es: 'Spanish', it: 'Italian',
+  pt: 'Portuguese', zh: 'Chinese', ru: 'Russian', ar: 'Arabic',
+};
+
+export async function getTmdbExtended(
+  mediaType: TmdbMediaType,
+  externalId: number,
+): Promise<TmdbExtended> {
+  const appendFields =
+    mediaType === 'movie'
+      ? 'videos,credits,release_dates'
+      : 'videos,credits,content_ratings';
+
+  const raw = await tmdbFetch<TmdbRaw>(`/${mediaType}/${externalId}`, {
+    language: 'en-US',
+    append_to_response: appendFields,
+  });
+
+  const item = mapTmdb(raw, mediaType);
+  const genres = raw.genres ?? [];
+  const trailerKey = extractTrailerKey(raw);
+
+  const rawCast = (raw.credits?.cast ?? []).slice(0, 10);
+  const cast: TmdbCastMember[] = rawCast.map((c) => ({
+    id: c.id,
+    name: c.name,
+    character: c.character,
+    profileUrl: imageUrl(c.profile_path, 'w185'),
+  }));
+
+  const rawCrew = raw.credits?.crew ?? [];
+  const directorEntry = rawCrew.find((c) => c.job === 'Director');
+  const director = directorEntry?.name ?? null;
+
+  const writers: TmdbCrewMember[] = rawCrew
+    .filter((c) => c.job === 'Screenplay' || c.job === 'Writer' || c.job === 'Story')
+    .slice(0, 3)
+    .map((c) => ({ id: c.id, name: c.name, job: c.job, profileUrl: imageUrl(c.profile_path, 'w185') }));
+
+  const ageRating = extractAgeRating(raw, mediaType);
+
+  const rawCountry = raw.origin_country?.[0] ?? null;
+  const country = rawCountry ? (COUNTRY_NAMES[rawCountry] ?? rawCountry) : null;
+
+  const rawLang = raw.original_language ?? null;
+  const language = rawLang ? (LANG_NAMES[rawLang] ?? rawLang) : null;
+
+  const productionCompanies = (raw.production_companies ?? [])
+    .slice(0, 4)
+    .map((p) => ({ id: p.id, name: p.name }));
+
+  const runtimeMins = raw.runtime;
+  const runtime = runtimeMins ? `${Math.floor(runtimeMins / 60)}h ${runtimeMins % 60}m` : null;
+
+  const yearStr = mediaType === 'movie'
+    ? (raw.release_date?.slice(0, 4) ?? '—')
+    : (raw.first_air_date?.slice(0, 4) ?? '—');
+
+  return {
+    item,
+    genres,
+    trailerKey,
+    cast,
+    director,
+    writers,
+    ageRating,
+    country,
+    language,
+    productionCompanies,
+    runtime,
+    year: yearStr,
+  };
 }
