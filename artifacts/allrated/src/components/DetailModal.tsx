@@ -57,7 +57,7 @@ export function DetailModal({ id, accent, onClose, onToast }: DetailModalProps) 
       />
       <div
         ref={scrollRef}
-        className="relative w-full max-w-[500px] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-white/[0.09] bg-ink-900 thin-scrollbar max-h-[92vh] lg:max-h-[88vh] lg:rounded-[28px] lg:border"
+        className="relative w-full max-w-[500px] animate-slide-up overflow-y-auto rounded-t-[28px] border-t border-[#B048FF]/20 bg-[#080808] thin-scrollbar max-h-[92vh] lg:max-h-[88vh] lg:rounded-[28px] lg:border"
       >
         <button
           onClick={onClose}
@@ -515,7 +515,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           className="p-0.5"
         >
           <Star
-            className={`h-5 w-5 ${n <= value ? 'fill-gold-light text-gold-light' : 'text-white/30'}`}
+            className={`h-5 w-5 ${n <= value ? 'fill-[#B048FF] text-[#B048FF]' : 'text-white/30'}`}
           />
         </button>
       ))}
@@ -541,7 +541,7 @@ function Review({
       <div className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
         <span>{user}</span>
         {tier && <TierBadge tier={tier} />}
-        <span className="text-gold-light">{starsFor(score)}</span>
+        <span className="text-[#B048FF]">{starsFor(score)}</span>
         <span className="ml-auto text-white/40">{time}</span>
       </div>
       {text && <div className="text-xs leading-relaxed text-white/55">{text}</div>}
@@ -763,7 +763,7 @@ function DetailBody({ item, accent, onToast }: DetailBodyProps) {
             className="absolute inset-0 flex items-center justify-center group"
             aria-label="Play trailer"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 bg-black/40 backdrop-blur-sm transition-all group-hover:scale-110 group-hover:bg-black/60 group-hover:border-white">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#B048FF]/80 bg-black/40 backdrop-blur-sm transition-all group-hover:scale-110 group-hover:bg-[#B048FF]/20 group-hover:border-[#B048FF] group-hover:shadow-[0_0_20px_rgba(176,72,255,0.5)]">
               <Play className="h-6 w-6 fill-white text-white ml-0.5" />
             </div>
             <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur-sm">

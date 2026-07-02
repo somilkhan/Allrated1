@@ -42,8 +42,8 @@ export function AppScreen({
   onOpenSaved,
   onToast,
 }: AppScreenProps) {
-  const meta = categoryData[cat];
-  const accent = meta.accent;
+  const accent = '#B048FF';
+  const accentPurpleLight = '#8F44F0';
   const [query, setQuery] = useState('');
   const [nav, setNav] = useState<NavPage>('home');
 
@@ -210,7 +210,7 @@ export function AppScreen({
         )}
       </div>
 
-      <BottomNav nav={nav} onNav={handleNav} accent={accent} accentLight={meta.accentLight} savedCount={savedCount} />
+      <BottomNav nav={nav} onNav={handleNav} accent={accent} accentLight={accentPurpleLight} savedCount={savedCount} />
     </div>
   );
 }
