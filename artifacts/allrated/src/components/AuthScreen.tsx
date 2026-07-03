@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Mail, Lock, User, Star, Sparkles } from 'lucide-react';
 import { useUserData } from '../context/userDataContext';
 
 interface AuthScreenProps {
@@ -12,7 +11,7 @@ type Tab = 'login' | 'signup';
 export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
   const { configured, signIn, signUp } = useUserData();
   const [tab, setTab] = useState<Tab>('login');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,7 +26,7 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
     setBusy(true);
     try {
       if (tab === 'signup') {
-        await signUp(email.trim(), password, name.trim());
+        await signUp(email.trim(), password, username.trim());
         onToast('Account created — check your email to confirm, then sign in');
         setTab('login');
       } else {
@@ -41,96 +40,136 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#080808] to-[#0f0516] animate-fade-in">
-      <div className="w-full max-w-[420px] px-5 py-8">
-        <div className="rounded-3xl border border-[#B048FF]/20 bg-[#0f0516]/80 p-10 shadow-[0_20px_60px_rgba(176,72,255,0.15)] backdrop-blur-xl">
-          <div className="mb-8 text-center">
-            <span className="mb-4 inline-block animate-bounce-slow text-5xl">⭐</span>
-            <h1 className="font-display text-3xl font-black tracking-tight">AllRated</h1>
-            <p className="mt-2 text-sm text-white/55">Rate everything you love</p>
+    <div className="fixed inset-0 z-[100] flex min-h-screen">
+      {/* Left panel — desktop only: dark with phone mockup */}
+      <div className="hidden lg:flex fixed left-0 top-0 w-1/2 h-screen bg-[#0F1014] flex-col items-center justify-center">
+        <div className="relative w-[320px] h-[560px] flex items-center justify-center">
+          <div className="w-[240px] h-[480px] rounded-[40px] border-4 border-white/20 bg-[#1a1b20] shadow-[0_40px_80px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col">
+            <div className="bg-[#1a1b20] px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded bg-white/20 flex items-center justify-center">
+                  <span className="text-white font-black text-[8px]">AR</span>
+                </div>
+                <span className="text-white font-black text-[10px] uppercase tracking-wider">AllRated</span>
+              </div>
+            </div>
+            <div className="flex-1 bg-gradient-to-b from-[#1a1b20] to-[#0F1014] p-3">
+              <div className="mb-2 text-[9px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1">
+                🔥 Most Interested
+              </div>
+              {['Alpha', 'Death Robin Hood', 'Toxic', 'Welcome to the Jungle'].map((title, i) => (
+                <div key={i} className="flex items-center gap-2 mb-2 rounded-xl bg-white/[0.06] p-2">
+                  <span className="text-[18px] font-black text-white/15 w-5 text-center leading-none">{i + 1}</span>
+                  <div className="h-8 w-6 rounded-lg bg-white/10 flex-shrink-0" />
+                  <div>
+                    <p className="text-white text-[9px] font-semibold leading-tight">{title}</p>
+                    <p className="text-orange-400 text-[8px] mt-0.5">🔥 {(2.1 - i * 0.3).toFixed(1)}K</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,16,20,0) 50%, #0F1014 90%)' }} />
+        </div>
+        <div className="absolute bottom-[10vh] px-12 text-center">
+          <h2 className="text-white text-[20px] font-semibold leading-snug max-w-[280px] mx-auto">
+            Exclusive access to curated movie selections
+          </h2>
+        </div>
+        <div className="absolute bottom-[6vh] flex items-center gap-3">
+          <div className="h-[6px] w-8 bg-white rounded-sm" />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-[6px] w-[6px] bg-white rounded-full opacity-40" />
+          ))}
+        </div>
+      </div>
+
+      {/* Right panel — gradient background */}
+      <div className="w-full lg:w-1/2 lg:ml-[50vw] min-h-screen flex flex-col items-center justify-start bg-gradient-to-l from-[#E07288] to-[#532863]">
+        <div className="w-full flex flex-col items-center pt-[15%] md:pt-[8%] pb-10 px-4">
+          {/* Logo */}
+          <div className="mb-6 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-md">
+              <span className="text-[#532863] font-black text-sm">AR</span>
+            </div>
+            <span className="text-white font-black text-[24px] tracking-wider uppercase">AllRated</span>
           </div>
 
-          <div className="mb-7 grid grid-cols-2 gap-2 rounded-2xl bg-white/[0.045] p-1">
-            {(['login', 'signup'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13px] font-bold transition-all ${
-                  tab === t
-                    ? 'bg-[#B048FF]/20 text-[#B048FF]'
-                    : 'text-white/55 hover:text-white/80'
-                }`}
-              >
-                {t === 'login' ? <Lock className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {t === 'login' ? 'Sign in' : 'Sign up'}
-              </button>
-            ))}
-          </div>
+          {/* White card */}
+          <div className="w-full max-w-[400px] bg-white rounded-2xl py-8 px-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] flex flex-col items-center">
+            {/* Tab switcher */}
+            <div className="flex w-full mb-6 gap-1 rounded-xl bg-gray-100 p-1">
+              {(['login', 'signup'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-all ${
+                    tab === t ? 'bg-white text-[#0F1014] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {t === 'login' ? 'Log In' : 'Sign Up'}
+                </button>
+              ))}
+            </div>
 
-          <form onSubmit={submit} className="flex flex-col gap-4">
-            {tab === 'signup' && (
-              <Field
-                icon={<User className="h-3.5 w-3.5" />}
-                type="text"
-                placeholder="Name"
-                value={name}
-                onChange={setName}
+            <h1 className="text-[20px] font-bold text-[#0F1014] text-center mb-5">
+              {tab === 'login' ? 'Log In' : 'Create Account'}
+            </h1>
+
+            <form onSubmit={submit} className="w-full flex flex-col gap-4">
+              {tab === 'signup' && (
+                <AuthField
+                  label="Username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={setUsername}
+                />
+              )}
+              <AuthField
+                label="Email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={setEmail}
               />
-            )}
-            <Field
-              icon={<Mail className="h-3.5 w-3.5" />}
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={setEmail}
-            />
-            <Field
-              icon={<Lock className="h-3.5 w-3.5" />}
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={setPassword}
-            />
+              <AuthField
+                label="Password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={setPassword}
+              />
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="mt-2 rounded-full bg-[#B048FF] py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-[#8F44F0] hover:shadow-[0_10px_30px_rgba(176,72,255,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy
-                ? 'Please wait…'
-                : tab === 'login'
-                  ? 'Sign in'
-                  : 'Create account'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={busy}
+                className="mt-1 w-full h-[44px] bg-[#0F1014] text-white rounded-xl font-semibold text-[14px] hover:bg-[#0F1014]/80 transition-colors disabled:opacity-50"
+              >
+                {busy ? 'Please wait…' : tab === 'login' ? 'Log In' : 'Sign Up'}
+              </button>
+            </form>
 
-          <div className="my-4 text-xs text-white/55">
-            <span className="relative px-3">or continue with</span>
+            <div className="mt-5 text-center">
+              <p className="text-[14px] font-semibold text-[#0F1014]">
+                {tab === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                <button
+                  type="button"
+                  onClick={() => setTab(tab === 'login' ? 'signup' : 'login')}
+                  className="hover:underline text-[#532863] font-bold"
+                >
+                  {tab === 'login' ? 'Sign Up' : 'Log In'}
+                </button>
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => onToast('Social sign-in coming soon')}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]"
-            >
-              <Star className="h-4 w-4" /> Google
-            </button>
-            <button
-              type="button"
-              onClick={() => onToast('Social sign-in coming soon')}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] py-3 text-sm font-semibold transition-all hover:bg-white/[0.08]"
-            >
-              <Star className="h-4 w-4" /> Apple
-            </button>
-          </div>
-
+          {/* Browse without signing in */}
           <button
             type="button"
             onClick={onSkip}
-            className="mt-5 w-full text-center text-[13px] text-[#B048FF]/70 underline underline-offset-2 hover:text-[#B048FF] transition-colors"
+            className="mt-6 text-[13px] text-white/75 hover:text-white transition-colors underline underline-offset-2"
           >
             Browse without signing in →
           </button>
@@ -140,24 +179,24 @@ export function AuthScreen({ onToast, onSkip }: AuthScreenProps) {
   );
 }
 
-interface FieldProps {
-  icon: React.ReactNode;
+interface AuthFieldProps {
+  label: string;
   type: string;
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
 }
 
-function Field({ icon, type, placeholder, value, onChange }: FieldProps) {
+function AuthField({ label, type, placeholder, value, onChange }: AuthFieldProps) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 transition-all focus-within:border-white/20 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
-      <span className="text-white/55">{icon}</span>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[14px] font-medium text-[#0F1014]">{label}</label>
       <input
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 bg-transparent py-3.5 text-sm text-white outline-none placeholder:text-white/55"
+        className="w-full h-[42px] px-3 bg-white rounded-lg border border-gray-300 text-[#0F1014] text-[14px] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#532863]/40"
       />
     </div>
   );

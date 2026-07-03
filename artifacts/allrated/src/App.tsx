@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from 'react';
 import { AuthScreen } from './components/AuthScreen';
-import { CategoryScreen } from './components/CategoryScreen';
 import { AppScreen } from './components/AppScreen';
 import { DetailModal } from './components/DetailModal';
 import { SavedPanel } from './components/SavedPanel';
@@ -9,7 +8,7 @@ import { useAppHistory } from './hooks/useAppHistory';
 import { useToast } from './hooks/useToast';
 import { useUserData } from './context/userDataContext';
 import { categoryData } from './data/catalog';
-import type { CategoryKey, Item } from './data/catalog';
+import type { Item } from './data/catalog';
 import { decodeId } from './api/ids';
 
 function App() {
@@ -19,73 +18,54 @@ function App() {
 
   useEffect(() => {
     if (!authReady) return;
-    // When user signs in from auth screen → go to category
     if (user && state.screen === 'auth') {
-      navigate({ screen: 'category' });
+      navigate({ screen: 'app', category: 'movie' });
     }
-    // Do NOT force unauthenticated users back to auth —
-    // browsing is allowed without an account; individual
-    // actions (save, review, favorite) show their own sign-in prompts.
   }, [authReady, user, state.screen, navigate]);
-
-  const handlePickCategory = useCallback(
-    (cat: CategoryKey) => {
-      navigate({ screen: 'app', category: cat });
-    },
-    [navigate],
-  );
-
-  const handleBackToCategories = useCallback(() => {
-    navigate({ screen: 'category' });
-  }, [navigate]);
 
   const openItem = useCallback(
     (item: Item) => {
-      if (state.screen === 'app' && state.category) {
-        navigate({ screen: 'app', category: state.category, modal: item.id });
-      }
+      const cat = state.screen === 'app' && state.category ? state.category : 'movie';
+      navigate({ screen: 'app', category: cat, modal: item.id });
     },
     [navigate, state],
   );
 
   const openSaved = useCallback(() => {
-    if (state.screen === 'app' && state.category) {
-      navigate({ screen: 'app', category: state.category, panel: 'saved' });
-    }
+    const cat = state.screen === 'app' && state.category ? state.category : 'movie';
+    navigate({ screen: 'app', category: cat, panel: 'saved' });
   }, [navigate, state]);
 
-  const closeModal = useCallback(() => {
-    back();
-  }, [back]);
-
-  const closeSavedPanel = useCallback(() => {
-    back();
-  }, [back]);
+  const closeModal = useCallback(() => back(), [back]);
+  const closeSavedPanel = useCallback(() => back(), [back]);
 
   const modalAccent =
     state.modal != null
       ? categoryData[decodeId(state.modal).mediaType].accent
       : categoryData.movie.accent;
 
+  const activeCat = (state.screen === 'app' && state.category) ? state.category : 'movie';
+
   return (
     <>
       {state.screen === 'auth' && (
-        <AuthScreen onToast={show} onSkip={() => navigate({ screen: 'category' })} />
+        <AuthScreen
+          onToast={show}
+          onSkip={() => navigate({ screen: 'app', category: 'movie' })}
+        />
       )}
 
-      {state.screen === 'category' && <CategoryScreen onPick={handlePickCategory} />}
-
-      {state.screen === 'app' && state.category && (
+      {state.screen !== 'auth' && (
         <AppScreen
-          cat={state.category}
-          onBackToCategories={handleBackToCategories}
+          cat={activeCat}
+          onBackToCategories={() => {}}
           onOpenItem={openItem}
           onOpenSaved={openSaved}
           onToast={show}
         />
       )}
 
-      {state.screen === 'app' && state.category && state.modal != null && (
+      {state.screen === 'app' && state.modal != null && (
         <DetailModal
           id={state.modal}
           accent={modalAccent}
@@ -94,7 +74,7 @@ function App() {
         />
       )}
 
-      {state.screen === 'app' && state.category && state.panel === 'saved' && (
+      {state.screen === 'app' && state.panel === 'saved' && (
         <SavedPanel
           items={watchlist}
           onClose={closeSavedPanel}
