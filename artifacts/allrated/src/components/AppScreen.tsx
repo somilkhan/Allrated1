@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Search,
   Bell,
@@ -12,7 +12,7 @@ import {
   Loader2,
   Frown,
   ChevronDown,
-  MessageCircle,
+  X,
 } from 'lucide-react';
 import type { CategoryKey, Item } from '../data/catalog';
 import { useCatalog } from '../hooks/useCatalog';
@@ -32,12 +32,15 @@ interface AppScreenProps {
 
 type NavTab = 'explore' | 'browse' | 'spaces' | 'collections' | 'profile';
 
+const RECENT_SEARCHES = ['Blast', 'Dhurandhar', 'KGF'];
+
 export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, onToast }: AppScreenProps) {
   const [nav, setNav] = useState<NavTab>('explore');
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [browseCat, setBrowseCat] = useState<CategoryKey>(cat);
   const [weekFilter, setWeekFilter] = useState<'This Week' | 'This Month'>('This Week');
+  const [recentSearches, setRecentSearches] = useState<string[]>(RECENT_SEARCHES);
 
   const { displayName, watchlist, signOut } = useUserData();
 
@@ -55,10 +58,20 @@ export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, on
       .catch(() => onToast('Failed to sign out'));
   };
 
+  const handleCloseSearch = () => {
+    setSearchOpen(false);
+    setQuery('');
+  };
+
+  const handleOpenItem = (item: Item) => {
+    if (searchOpen) handleCloseSearch();
+    onOpenItem(item);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-[#0F1014] text-white">
       <MoctaleHeader
-        onSearchOpen={() => { setSearchOpen(true); setNav('explore'); }}
+        onSearchOpen={() => setSearchOpen(true)}
         onNotification={() => onToast('No new notifications')}
         onMenu={handleSignOut}
       />
@@ -71,16 +84,9 @@ export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, on
             talkItems={talkItems}
             loading={loading}
             error={error}
-            searchOpen={searchOpen}
-            query={query}
-            onQuery={setQuery}
-            onCloseSearch={() => { setSearchOpen(false); setQuery(''); }}
-            searching={searching}
-            searchResults={search.results}
-            searchLoading={search.loading}
             weekFilter={weekFilter}
             onWeekFilter={setWeekFilter}
-            onOpenItem={onOpenItem}
+            onOpenItem={handleOpenItem}
             onToast={onToast}
           />
         )}
@@ -91,12 +97,12 @@ export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, on
             items={browseCatalog.items}
             loading={browseCatalog.loading}
             error={browseCatalog.error}
-            onOpenItem={onOpenItem}
+            onOpenItem={handleOpenItem}
           />
         )}
         {nav === 'spaces' && <SpacesScreen onToast={onToast} />}
         {nav === 'collections' && (
-          <CollectionsScreen watchlist={watchlist} onOpenItem={onOpenItem} onToast={onToast} />
+          <CollectionsScreen watchlist={watchlist} onOpenItem={handleOpenItem} onToast={onToast} />
         )}
         {nav === 'profile' && (
           <ProfileScreen displayName={displayName} onSignOut={handleSignOut} onToast={onToast} />
@@ -104,6 +110,23 @@ export function AppScreen({ cat, onBackToCategories, onOpenItem, onOpenSaved, on
       </div>
 
       <BottomNav nav={nav} onNav={setNav} />
+
+      {/* Full-page Moctale search overlay */}
+      {searchOpen && (
+        <FullSearchScreen
+          query={query}
+          onQuery={setQuery}
+          onClose={handleCloseSearch}
+          searchResults={search.results}
+          searchLoading={search.loading}
+          searching={searching}
+          recentSearches={recentSearches}
+          onRemoveRecent={(s) => setRecentSearches((prev) => prev.filter((r) => r !== s))}
+          onClearRecent={() => setRecentSearches([])}
+          onSelectRecent={(s) => setQuery(s)}
+          onOpenItem={handleOpenItem}
+        />
+      )}
     </div>
   );
 }
@@ -140,19 +163,143 @@ function MoctaleHeader({
   );
 }
 
+/* ── Full-page Search Screen (matches Moctale /search) ── */
+const SEARCH_TABS = ['Content', 'Collections', 'Cast & Crew', 'Users'];
+
+function FullSearchScreen({
+  query,
+  onQuery,
+  onClose,
+  searchResults,
+  searchLoading,
+  searching,
+  recentSearches,
+  onRemoveRecent,
+  onClearRecent,
+  onSelectRecent,
+  onOpenItem,
+}: {
+  query: string;
+  onQuery: (v: string) => void;
+  onClose: () => void;
+  searchResults: Item[];
+  searchLoading: boolean;
+  searching: boolean;
+  recentSearches: string[];
+  onRemoveRecent: (s: string) => void;
+  onClearRecent: () => void;
+  onSelectRecent: (s: string) => void;
+  onOpenItem: (item: Item) => void;
+}) {
+  const [activeTab, setActiveTab] = useState('Content');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#0F1014] text-white">
+      {/* Search bar row */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.08]">
+        <button onClick={onClose} className="text-white/70 hover:text-white transition-colors flex-shrink-0">
+          <X className="h-5 w-5" />
+        </button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <input
+            ref={inputRef}
+            autoFocus
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Search for Movies, Shows, Anime, Cast &"
+            className="w-full rounded-xl border border-white/10 bg-[#1A1B1F] py-2.5 pl-9 pr-4 text-[14px] text-white outline-none placeholder:text-white/35 focus:border-white/20"
+          />
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-white/[0.08] px-1">
+        {SEARCH_TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`px-3.5 py-3 text-[13px] font-semibold transition-all whitespace-nowrap ${
+              activeTab === t
+                ? 'border-b-2 border-white text-white'
+                : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {!searching ? (
+          /* Recent searches */
+          <div className="px-4 pt-5">
+            {recentSearches.length > 0 && (
+              <>
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Recent Searches</span>
+                  <button
+                    onClick={onClearRecent}
+                    className="text-[12px] text-white/40 hover:text-white transition-colors"
+                  >
+                    Clear history
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((s) => (
+                    <div key={s} className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5">
+                      <button
+                        onClick={() => onSelectRecent(s)}
+                        className="text-[13px] text-white/80 hover:text-white transition-colors"
+                      >
+                        {s}
+                      </button>
+                      <button
+                        onClick={() => onRemoveRecent(s)}
+                        className="ml-1 text-white/30 hover:text-white/70 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {recentSearches.length === 0 && (
+              <p className="py-12 text-center text-[13px] text-white/30">Search for movies, shows, anime, and more</p>
+            )}
+          </div>
+        ) : searchLoading ? (
+          <LoadingState />
+        ) : searchResults.length === 0 ? (
+          <div className="py-16 text-center text-[13px] text-white/40">No results for "{query}"</div>
+        ) : (
+          <div className="px-4 pt-4">
+            <p className="mb-3 text-[13px] font-semibold text-white/40">{searchResults.length} results for "{query}"</p>
+            {activeTab === 'Content' && (
+              <div className="grid grid-cols-2 gap-3">
+                {searchResults.map((item) => (
+                  <TalkCard key={item.id} item={item} onClick={() => onOpenItem(item)} />
+                ))}
+              </div>
+            )}
+            {activeTab !== 'Content' && (
+              <p className="py-12 text-center text-[13px] text-white/30">No {activeTab} results</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface ExplorePageProps {
   items: Item[];
   topItems: Item[];
   talkItems: Item[];
   loading: boolean;
   error: string | null;
-  searchOpen: boolean;
-  query: string;
-  onQuery: (v: string) => void;
-  onCloseSearch: () => void;
-  searching: boolean;
-  searchResults: Item[];
-  searchLoading: boolean;
   weekFilter: 'This Week' | 'This Month';
   onWeekFilter: (v: 'This Week' | 'This Month') => void;
   onOpenItem: (item: Item) => void;
@@ -165,13 +312,6 @@ function ExplorePage({
   talkItems,
   loading,
   error,
-  searchOpen,
-  query,
-  onQuery,
-  onCloseSearch,
-  searching,
-  searchResults,
-  searchLoading,
   weekFilter,
   onWeekFilter,
   onOpenItem,
@@ -181,45 +321,8 @@ function ExplorePage({
 
   return (
     <div className="px-4 pt-2">
-      {searchOpen && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => onQuery(e.target.value)}
-              placeholder="Search movies, shows, anime..."
-              className="w-full rounded-xl border border-white/10 bg-white/[0.07] py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/20"
-            />
-          </div>
-          <button onClick={onCloseSearch} className="text-sm text-white/55 hover:text-white px-2">
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {searching ? (
-        searchLoading ? (
-          <LoadingState />
-        ) : searchResults.length === 0 ? (
-          <div className="py-16 text-center text-white/40 text-sm">No results for "{query}"</div>
-        ) : (
-          <div>
-            <h2 className="mb-3 font-bold text-[15px]">Results for "{query}"</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {searchResults.map((item) => (
-                <TalkCard key={item.id} item={item} onClick={() => onOpenItem(item)} />
-              ))}
-            </div>
-          </div>
-        )
-      ) : (
-        <>
-          <MostInterestedSection items={topItems} weekFilter={weekFilter} onWeekFilter={onWeekFilter} onOpenItem={onOpenItem} />
-          <TalkOfTheTownSection items={talkItems} onOpenItem={onOpenItem} />
-        </>
-      )}
+      <MostInterestedSection items={topItems} weekFilter={weekFilter} onWeekFilter={onWeekFilter} onOpenItem={onOpenItem} />
+      <TalkOfTheTownSection items={talkItems} onOpenItem={onOpenItem} />
     </div>
   );
 }
@@ -424,7 +527,15 @@ function BottomNav({ nav, onNav }: BottomNavProps) {
     { key: 'browse', icon: <CalendarDays className="h-[22px] w-[22px]" />, label: 'Browse' },
     { key: 'spaces', icon: <Coffee className="h-[22px] w-[22px]" />, label: 'Spaces' },
     { key: 'collections', icon: <Bookmark className="h-[22px] w-[22px]" />, label: 'Collections' },
-    { key: 'profile', icon: <MessageCircle className="h-[22px] w-[22px]" />, label: 'Profile' },
+    {
+      key: 'profile',
+      icon: (
+        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#2a2a40] to-[#1a1a2e] border border-white/30 flex items-center justify-center text-[10px] font-bold text-white">
+          U
+        </div>
+      ),
+      label: 'Profile',
+    },
   ];
 
   return (
